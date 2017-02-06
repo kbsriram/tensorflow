@@ -12,6 +12,13 @@ java_binary(
     deps = ["//tensorflow/java:tensorflow"],
 )
 
+java_binary(
+    name = "label_image_2",
+    srcs = ["LabelImage2.java"],
+    main_class = "org.tensorflow.examples.LabelImage2",
+    deps = ["//tensorflow/java:tensorflow"],
+)
+
 filegroup(
     name = "all_files",
     srcs = glob(

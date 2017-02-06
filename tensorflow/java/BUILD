@@ -16,7 +16,10 @@ java_library(
 # .aar. At some point, might make sense for a .aar rule here instead.
 filegroup(
     name = "java_sources",
-    srcs = glob(["src/main/java/org/tensorflow/*.java"]),
+    srcs = glob([
+        "src/main/java/org/tensorflow/*.java",
+        "src/main/java/org/tensorflow/ops/**/*.java"
+    ]),
     visibility = [
         "//tensorflow/contrib/android:__pkg__",
         "//tensorflow/java:__pkg__",
@@ -160,6 +163,7 @@ filegroup(
         exclude = [
             "**/METADATA",
             "**/OWNERS",
+            "**/*.class"
         ],
     ),
     visibility = ["//tensorflow:__subpackages__"],

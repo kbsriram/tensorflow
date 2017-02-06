@@ -63,9 +63,10 @@ public final class OperationBuilder {
     }
   }
 
-  public OperationBuilder addInput(Output input) {
+  public OperationBuilder addInput(InputSource inputSrc) {
     Graph.Reference r = graph.ref();
     try {
+      Output input = inputSrc.input();
       addInput(unsafeNativeHandle, input.op().getUnsafeNativeHandle(), input.index());
     } finally {
       r.close();
@@ -73,14 +74,15 @@ public final class OperationBuilder {
     return this;
   }
 
-  public OperationBuilder addInputList(Output[] inputs) {
+  public OperationBuilder addInputList(InputSource[] inputSrcs) {
     Graph.Reference r = graph.ref();
     try {
-      long[] opHandles = new long[inputs.length];
-      int[] indices = new int[inputs.length];
-      for (int i = 0; i < inputs.length; ++i) {
-        opHandles[i] = inputs[i].op().getUnsafeNativeHandle();
-        indices[i] = inputs[i].index();
+      long[] opHandles = new long[inputSrcs.length];
+      int[] indices = new int[inputSrcs.length];
+      for (int i = 0; i < inputSrcs.length; ++i) {
+        Output input = inputSrcs[i].input();
+        opHandles[i] = input.op().getUnsafeNativeHandle();
+        indices[i] = input.index();
       }
       addInputList(unsafeNativeHandle, opHandles, indices);
     } finally {
