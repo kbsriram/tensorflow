@@ -5,6 +5,12 @@ package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])  # Apache 2.0
 
+load(
+    "//tensorflow:tensorflow.bzl",
+    "tf_copts",
+    "tf_gen_op_wrappers_java",
+)
+
 java_library(
     name = "tensorflow",
     srcs = [":java_sources"],
@@ -17,8 +23,7 @@ java_library(
 filegroup(
     name = "java_sources",
     srcs = glob([
-        "src/main/java/org/tensorflow/*.java",
-        "src/main/java/org/tensorflow/ops/**/*.java"
+        "src/main/java/org/tensorflow/**/*.java",
     ]),
     visibility = [
         "//tensorflow/contrib/android:__pkg__",
@@ -167,4 +172,47 @@ filegroup(
         ],
     ),
     visibility = ["//tensorflow:__subpackages__"],
+)
+
+cc_library(
+    name = "java_op_gen_main",
+    srcs = glob([
+    	"src/gen/ops/*.h",
+    	"src/gen/ops/*.cc"
+    ]),
+    copts = tf_copts(),
+    deps = [
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:lib_internal",
+        "//tensorflow/core:proto_text",
+        "//tensorflow/core:protos_all_cc",
+    ],
+)
+
+tf_gen_op_wrappers_java(
+    name = "tensorflow_with_ops",
+    op_lib_names = [
+        "array_ops",
+        "candidate_sampling_ops",
+        "control_flow_ops",
+        "data_flow_ops",
+        "image_ops",
+        "io_ops",
+        "linalg_ops",
+        "logging_ops",
+        "math_ops",
+        "nn_ops",
+        "no_op",
+        "parsing_ops",
+        "random_ops",
+        "sparse_ops",
+        "state_ops",
+        "string_ops",
+        "training_ops",
+        "user_ops",
+    ],
+    op_gen = "//tensorflow/java:java_op_gen_main",
+    pkg = "//tensorflow/core",
+    other_srcs = [":java_sources"],
 )

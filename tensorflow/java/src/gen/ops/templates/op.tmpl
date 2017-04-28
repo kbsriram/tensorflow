@@ -1,0 +1,18 @@
+package org.tensorflow.ops.${pkg_name};
+
+import org.tensorflow.ops.Node;
+import org.tensorflow.ops.Scope;
+${imports}
+
+public class ${op_name_pc} extends Node {
+
+  ${op_name_pc}(Scope scope${op_inputs}) {
+    this(scope, OP_TYPE${op_inputs_names});
+  }
+
+  ${op_name_pc}(Scope scope, String name${op_inputs}) {
+    super(scope, OP_TYPE, name${op_inputs_names});
+  }
+${op_attrs}
+  private static final String OP_TYPE = "${op_name_pc}";
+}

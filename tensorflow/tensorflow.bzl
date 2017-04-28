@@ -160,8 +160,7 @@ def tf_gen_op_wrapper_cc(name, out_ops_file, pkg="",
       name=name + "_genrule",
       outs=[out_ops_file + ".h", out_ops_file + ".cc"],
       tools=[":" + tool],
-      cmd=("$(location :" + tool + ") $(location :" + out_ops_file + ".h) " +
-           "$(location :" + out_ops_file + ".cc) " + str(include_internal_ops)))
+      cmd=("$(location :" + tool + ") " + out_ops_file + " " + str(include_internal_ops)))
 
 # Given a list of "op_lib_names" (a list of files in the ops directory
 # without their .cc extensions), generate individual C++ .cc and .h
@@ -218,6 +217,49 @@ def tf_gen_op_wrappers_cc(name,
                     alwayslink=1,
                     visibility=visibility)
 
+def tf_gen_op_wrapper_java(name, out_ops_file, pkg="",
+                         op_gen="//tensorflow/java:java_op_gen_main",
+                         deps=None,
+                         include_internal_ops=0):
+  # Construct an op generator binary for these ops.
+  tool = out_ops_file + "_gen_java"
+  if deps == None:
+    deps = [pkg + ":" + name + "_op_lib"]
+  native.cc_binary(
+      name = tool,
+      copts = tf_copts(),
+      linkopts = ["-lm"],
+      linkstatic = 1,   # Faster to link this one-time-use binary dynamically
+      deps = [op_gen] + deps
+  )
+
+  native.genrule(
+      name=name + "_genrule",
+      outs=[out_ops_file + ".srcjar"],
+      tools=[":" + tool],
+      cmd=("$(location :" + tool + ") " + out_ops_file + " " + str(include_internal_ops) 
+      		+ "; jar cMf $(location :" + out_ops_file + ".srcjar) -C " + out_ops_file + " .")
+   )
+
+def tf_gen_op_wrappers_java(name,
+                          op_lib_names=[],
+                          other_srcs=[],
+                          other_hdrs=[],
+                          pkg="",
+                          op_gen="//tensorflow/java:java_op_gen_main",
+                          include_internal_ops=0,
+                          visibility=None):
+  subsrcs = other_srcs
+  for n in op_lib_names:
+    tf_gen_op_wrapper_java(
+        n, n, pkg=pkg, op_gen=op_gen,
+        include_internal_ops=include_internal_ops)
+    subsrcs += [n + ".srcjar"]
+
+  native.java_library(name=name,
+                    srcs=subsrcs,
+                    visibility=visibility)
+ 
 # Invoke this rule in .../tensorflow/python to build the wrapper library.
 def tf_gen_op_wrapper_py(name, out=None, hidden=None, visibility=None, deps=[],
                          require_shape_functions=False, hidden_file=None,
