@@ -30,13 +30,6 @@ public class OperationTest {
 
   @Test
   public void  outputListLengthFailsOnInvalidName() {
-    try (Graph g = new Graph()) {
-      Operation op = g.opBuilder("Add", "Add")
-          .addInput(TestUtil.constant(g, "x", 1))
-          .addInput(TestUtil.constant(g, "y", 2))
-          .build();
-      assertEquals(1, op.outputListLength("z"));
-
       try {
         op.outputListLength("unknown");
         fail("Did not catch bad name");
@@ -44,6 +37,23 @@ public class OperationTest {
         // expected
       }
     }
+    return builder.build();
+  }
+
+  private Output variable(Graph g, String name, Output value) {
+    return g.opBuilder("VariableV2", name)
+        .setAttr("shape", value.shape())
+        .setAttr("dtype", value.dataType())
+        .build()
+        .output(0);
+  }
+
+  private Output assign(Graph g, String name, Output ref, Output value) {
+    return g.opBuilder("Assign", name)
+        .addInput(ref)
+        .addInput(value)
+        .build()
+        .output(0);
   }
 
   @Test

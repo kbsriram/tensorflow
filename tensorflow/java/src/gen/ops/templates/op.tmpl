@@ -1,0 +1,34 @@
+package org.tensorflow.ops.${pkg_name};
+
+import org.tensorflow.Operation;
+import org.tensorflow.OperationBuilder;
+import org.tensorflow.Output;
+import org.tensorflow.annotation.Operator;
+import org.tensorflow.ops.OperationContext;
+import org.tensorflow.ops.Node;
+${imports}
+
+// ${op_name_desc}
+
+@Operator(group = "${pkg_name}")
+public final class ${op_name_pc} extends Node ${op_implements} {
+
+  public ${op_name_pc}(OperationContext ctx${op_inputs}) {
+    opBuilder =
+      ctx.graph().opBuilder(OP_TYPE, ctx.nameScope().makeOpName(OP_TYPE))${op_inputs_builder};
+  }
+${op_attrs}${op_outputs}${op_implement_method}
+  private final void maybeBuild() {
+    if (opBuilder == null) {
+      return;
+    }
+
+    Operation op = opBuilder.build();
+    int _opIndex = 0;
+${op_output_setter}
+    opBuilder = null;
+  }
+
+  private OperationBuilder opBuilder;
+  private static final String OP_TYPE = "${op_name_pc}";
+}

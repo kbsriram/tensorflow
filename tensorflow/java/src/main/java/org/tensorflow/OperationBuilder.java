@@ -73,6 +73,16 @@ public final class OperationBuilder {
     return this;
   }
 
+  public OperationBuilder addControlInput(Operation control) {
+    Graph.Reference r = graph.ref();
+    try {
+      addControlInput(unsafeNativeHandle, control.getUnsafeNativeHandle());
+    } finally {
+      r.close();
+    }
+    return this;
+  }
+
   public OperationBuilder addInputList(Output[] inputs) {
     Graph.Reference r = graph.ref();
     try {
@@ -243,6 +253,8 @@ public final class OperationBuilder {
   private static native void addInput(long handle, long opHandle, int index);
 
   private static native void addInputList(long handle, long[] opHandles, int[] indices);
+
+  private static native void addControlInput(long handle, long opHandle);
 
   private static native void setDevice(long handle, String device);
 

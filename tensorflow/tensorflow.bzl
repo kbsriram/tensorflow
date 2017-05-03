@@ -304,6 +304,56 @@ def tf_gen_op_wrappers_cc(name,
       alwayslink=1,
       visibility=[clean_dep("//tensorflow:internal")])
 
+def tf_gen_op_wrapper_java(name, out_ops_file, pkg="",
+                         op_gen="//tensorflow/java:java_op_gen_main",
+                         deps=None,
+                         data=None,
+                         include_internal_ops=0):
+  # Construct an op generator binary for these ops.
+  tool = out_ops_file + "_gen_java"
+  if deps == None:
+    deps = [pkg + ":" + name + "_op_lib"]
+  native.cc_binary(
+      name = tool,
+      copts = tf_copts(),
+      linkopts = ["-lm"],
+      linkstatic = 1,   # Faster to link this one-time-use binary dynamically
+      deps = [op_gen] + deps,
+      data = data,
+  )
+
+  native.genrule(
+      name=name + "_genrule",
+      outs=[out_ops_file + ".srcjar"],
+      tools=[":" + tool],
+      cmd=("$(location :" + tool + ") " + out_ops_file + " " + str(include_internal_ops) 
+      		+ "; jar cMf $(location :" + out_ops_file + ".srcjar) -C " + out_ops_file + " .")
+   )
+
+def tf_gen_op_wrappers_java(name,
+                          op_lib_names=[],
+                          other_srcs=[],
+                          other_hdrs=[],
+                          plugins=[],
+                          deps=None,
+                          data=None,
+                          pkg="",
+                          op_gen="//tensorflow/java:java_op_gen_main",
+                          include_internal_ops=0,
+                          visibility=None):
+  subsrcs = other_srcs
+  for n in op_lib_names:
+    tf_gen_op_wrapper_java(
+        n, n, pkg=pkg, op_gen=op_gen, data=data,
+        include_internal_ops=include_internal_ops)
+    subsrcs += [n + ".srcjar"]
+
+  native.java_library(name=name,
+                      srcs=subsrcs,
+                      deps=deps,
+                      plugins=plugins,
+                      visibility=visibility)
+ 
 
 # Invoke this rule in .../tensorflow/python to build the wrapper library.
 def tf_gen_op_wrapper_py(name,

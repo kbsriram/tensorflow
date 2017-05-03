@@ -624,6 +624,39 @@ def tf_workspace(path_prefix="", tf_repo_name=""):
       testonly_ = True,
   )
 
+  native.maven_jar(
+    name = "com_google_guava_guava",
+    artifact = "com.google.guava:guava:21.0",
+    sha1 = "3a3d111be1be1b745edfa7d91678a12d7ed38709",
+  )
+
+  native.bind(
+    name = "guava",
+    actual = "@com_google_guava_guava//jar"
+  )
+
+  native.maven_jar(
+    name = "com_google_auto_auto_common",
+    artifact = "com.google.auto:auto-common:0.8",
+    sha1 = "c6f7af0e57b9d69d81b05434ef9f3c5610d498c4",
+  )
+
+  native.bind(
+    name = "google_auto_common",
+    actual = "@com_google_auto_auto_common//jar"
+  )
+
+  native.maven_jar(
+    name = "com_squareup_javapoet",
+    artifact = "com.squareup:javapoet:1.8.0",
+    sha1 = "e858dc62ef484048540d27d36f3ec2177a3fa9b1",
+  )
+
+  native.bind(
+    name = "javapoet",
+    actual = "@com_squareup_javapoet//jar"
+  )
+
   temp_workaround_http_archive(
       name = "jemalloc",
       urls = [

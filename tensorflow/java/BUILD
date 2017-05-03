@@ -5,6 +5,12 @@ package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])  # Apache 2.0
 
+load(
+    "//tensorflow:tensorflow.bzl",
+    "tf_copts",
+    "tf_gen_op_wrappers_java",
+)
+
 java_library(
     name = "tensorflow",
     srcs = [":java_sources"],
@@ -16,7 +22,9 @@ java_library(
 # .aar. At some point, might make sense for a .aar rule here instead.
 filegroup(
     name = "java_sources",
-    srcs = glob(["src/main/java/org/tensorflow/*.java"]),
+    srcs = glob([
+        "src/main/java/org/tensorflow/**/*.java",
+    ]),
     visibility = [
         "//tensorflow/contrib/android:__pkg__",
         "//tensorflow/java:__pkg__",
@@ -24,10 +32,51 @@ filegroup(
 )
 
 java_library(
+    name = "tensorflow_annotations",
+    srcs = [":annotation_sources"],
+)
+
+filegroup(
+    name = "annotation_sources",
+    srcs = glob([
+        "src/annotation/java/org/tensorflow/**/*.java",
+    ]),
+)
+
+java_plugin(
+    name = "operator_plugin",
+    processor_class = "org.tensorflow.operator.processor.OperatorProcessor",
+    srcs = [":java_plugin_sources"],
+    deps = [
+        ":tensorflow_annotations",
+        "//external:javapoet",
+        "//external:guava",
+        "//external:google_auto_common",
+    ],
+    generates_api = True,
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "java_plugin_sources",
+    srcs = glob([
+        "src/processor/java/org/tensorflow/**/*.java",
+    ]),
+)
+
+filegroup(
+    name = "java_templates",
+    srcs = glob([
+        "src/gen/ops/templates/*.tmpl",
+    ]),
+)
+
+java_library(
     name = "testutil",
     testonly = 1,
     srcs = ["src/test/java/org/tensorflow/TestUtil.java"],
-    deps = [":tensorflow"],
+    deps = [":tensorflow_with_ops"],
+    data = [":libtensorflow_jni"],
 )
 
 java_test(
@@ -202,4 +251,58 @@ filegroup(
         ],
     ),
     visibility = ["//tensorflow:__subpackages__"],
+)
+
+cc_library(
+    name = "java_op_gen_main",
+    srcs = glob([
+    	"src/gen/ops/*.h",
+    	"src/gen/ops/*.cc"
+    ]),
+    copts = tf_copts(),
+    deps = [
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:lib_internal",
+        "//tensorflow/core:proto_text",
+        "//tensorflow/core:protos_all_cc",
+    ],
+)
+
+java_binary(
+    name = "tensorflow_example",
+    srcs = glob(["src/example/java/org/tensorflow/**/*.java"]),
+    deps = [":tensorflow_with_ops"],
+    data = [":libtensorflow_jni"],
+    main_class = "com.tensorflow.example.HelloWorld",
+)
+
+tf_gen_op_wrappers_java(
+    name = "tensorflow_with_ops",
+    op_lib_names = [
+        "array_ops",
+        "candidate_sampling_ops",
+        "control_flow_ops",
+        "data_flow_ops",
+        "image_ops",
+        "io_ops",
+        "linalg_ops",
+        "logging_ops",
+        "math_ops",
+        "nn_ops",
+        "no_op",
+        "parsing_ops",
+        "random_ops",
+        "sparse_ops",
+        "state_ops",
+        "string_ops",
+        "training_ops",
+        "user_ops",
+    ],
+    op_gen = "//tensorflow/java:java_op_gen_main",
+    pkg = "//tensorflow/core",
+    other_srcs = [":java_sources"],
+    deps = [":tensorflow_annotations"],
+    data = [":java_templates"],
+    plugins = [":operator_plugin"],
 )
