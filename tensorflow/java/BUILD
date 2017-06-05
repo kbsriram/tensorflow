@@ -74,6 +74,18 @@ java_test(
 )
 
 java_test(
+    name = "UtilTest",
+    size = "small",
+    srcs = ["src/test/java/org/tensorflow/UtilTest.java"],
+    javacopts = JAVACOPTS,
+    test_class = "org.tensorflow.UtilTest",
+    deps = [
+        ":tensorflow",
+        "@junit",
+    ],
+)
+
+java_test(
     name = "SavedModelBundleTest",
     size = "small",
     srcs = ["src/test/java/org/tensorflow/SavedModelBundleTest.java"],

@@ -15,6 +15,10 @@ limitations under the License.
 
 package org.tensorflow;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * A data flow graph representing a TensorFlow computation.
  *
@@ -131,6 +135,94 @@ public final class Graph implements AutoCloseable {
     }
   }
 
+  /**
+   * Add operations to compute the gradient of a subgraph.
+   *
+   * <p>Adds operations to compute the partial derivatives of sum of <i>y</i>s w.r.t <i>x</i>s,
+   * i.e., <i>d(y<sub>1</sub> + y<sub>2</sub> + ...)/dx<sub>1</sub>, d(y<sub>1</sub> + y<sub>2</sub>
+   * + ...)/dx<sub>2</sub>...</i>
+   *
+   * <p>{@code dx} are used as initial gradients (which represent the symbolic partial derivatives
+   * of some loss function <i>L</i> w.r.t. <i>y</i>).
+   *
+   * <p>{@code dx} must be {@code null} or have the same number of elements as {@code y}. If {@code
+   * dx} is {@code null}, the implementation will effectively use {@code dx = 1} for all shapes in
+   * {@code y}.
+   *
+   * <p>The partial derivatives are returned as a list of {@code Output}s with the same number of
+   * elements as {@code x}.
+   *
+   * @param y is an Iterable {@code Output} pointing to the outputs of the subgraph operation of
+   *     interest.
+   * @param x is an Iterable {@code Output} pointing to the inputs of the subgraph operation of
+   *     interest.
+   * @param dx is an Iterable {@code Output} with initial gradient values. If it is null, the
+   *     implementation will effectively use {@code 1} as the initial gradient for all {@code y}.
+   * @return an unmodifiable List of {@code Output}s of partial derivatives.
+   */
+  public List<Output> addGradients(Iterable<Output> y, Iterable<Output> x, Iterable<Output> dx) {
+    return Collections.unmodifiableList(
+        Arrays.asList(
+            addGradients(
+                Util.toArray(y, Output.class),
+                Util.toArray(x, Output.class),
+                Util.toArray(dx, Output.class))));
+  }
+
+  private Output[] addGradients(Output[] y, Output[] x, Output[] dx) {
+    synchronized (nativeHandleLock) {
+      long[] yOpHandles = new long[y.length];
+      int[] yOpIndices = new int[y.length];
+      for (int i = 0; i < y.length; i++) {
+        yOpHandles[i] = y[i].op().getUnsafeNativeHandle();
+        yOpIndices[i] = y[i].index();
+      }
+      long[] xOpHandles = new long[x.length];
+      int[] xOpIndices = new int[x.length];
+      for (int i = 0; i < x.length; i++) {
+        xOpHandles[i] = x[i].op().getUnsafeNativeHandle();
+        xOpIndices[i] = x[i].index();
+      }
+      long[] dxOpHandles;
+      int[] dxOpIndices;
+      if (dx == null) {
+        dxOpHandles = null;
+        dxOpIndices = null;
+      } else {
+        if (dx.length != y.length) {
+          throw new IllegalArgumentException(
+              String.format("dx must be the same length as y (%d != %d)", dx.length, y.length));
+        }
+        dxOpHandles = new long[dx.length];
+        dxOpIndices = new int[dx.length];
+        for (int i = 0; i < dx.length; i++) {
+          dxOpHandles[i] = dx[i].op().getUnsafeNativeHandle();
+          dxOpIndices[i] = dx[i].index();
+        }
+      }
+      // Native code will return handles and indices for dy in these pre-allocated
+      // arrays.
+      long[] dyOpHandles = new long[y.length];
+      int[] dyOpIndices = new int[y.length];
+      addGradients(
+          nativeHandle,
+          yOpHandles,
+          yOpIndices,
+          xOpHandles,
+          xOpIndices,
+          dxOpHandles,
+          dxOpIndices,
+          dyOpHandles,
+          dyOpIndices);
+      Output[] dy = new Output[y.length];
+      for (int i = 0; i < dyOpHandles.length; i++) {
+        Operation op = new Operation(this, dyOpHandles[i]);
+        dy[i] = op.output(dyOpIndices[i]);
+      }
+      return dy;
+    }
+  }
+
   private final Object nativeHandleLock = new Object();
   private long nativeHandle;
   private int refcount = 0;
@@ -189,6 +281,17 @@ public final class Graph implements AutoCloseable {
       throws IllegalArgumentException;
 
   private static native byte[] toGraphDef(long handle);
+
+  private static native void addGradients(
+      long handle,
+      long[] yOpHandles,
+      int[] yOpIndices,
+      long[] xOpHandles,
+      int[] xOpIndices,
+      long[] dxOpHandles,
+      int[] dxOpIndices,
+      long[] dyOpHandles,
+      int[] dyOpIndices);
 
   static {
     TensorFlow.init();
