@@ -221,7 +221,7 @@ public final class OperationBuilder {
     return this;
   }
 
-  public OperationBuilder setAttr(String name, Tensor value) {
+  public OperationBuilder setAttr(String name, Tensor<?> value) {
     Graph.Reference r = graph.ref();
     try {
       setAttrTensor(unsafeNativeHandle, name, value.getNativeHandle());
@@ -231,10 +231,10 @@ public final class OperationBuilder {
     return this;
   }
 
-  public OperationBuilder setAttr(String name, Tensor[] value) {
+  public OperationBuilder setAttr(String name, Tensor<?>[] value) {
     long[] handles = new long[value.length];
     int idx = 0;
-    for (Tensor t : value) {
+    for (Tensor<?> t : value) {
       handles[idx++] = t.getNativeHandle();
     }
     Graph.Reference r = graph.ref();

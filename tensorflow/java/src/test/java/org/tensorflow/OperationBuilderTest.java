@@ -27,15 +27,16 @@ import org.junit.runners.JUnit4;
 /** Unit tests for {@link org.tensorflow.OperationBuilder}. */
 @RunWith(JUnit4.class)
 public class OperationBuilderTest {
-  // TODO(ashankar): Restore this test once the C API gracefully handles mixing graphs and
+
+// TODO(ashankar): Restore this test once the C API gracefully handles mixing graphs and
   // operations instead of segfaulting.
   @Test
   @Ignore
   public void failWhenMixingOperationsOnDifferentGraphs() {
     try (Graph g1 = new Graph();
         Graph g2 = new Graph()) {
-      Output c1 = TestUtil.constant(g1, "C1", 3);
-      Output c2 = TestUtil.constant(g2, "C2", 3);
+      Output<Integer> c1 = TestUtil.constant(g1, "C1", 3);
+      Output<Integer> c2 = TestUtil.constant(g2, "C2", 3);
       TestUtil.addN(g1, c1, c1);
       try {
         TestUtil.addN(g2, c1, c2);
@@ -44,11 +45,11 @@ public class OperationBuilderTest {
       }
     }
   }
-
+  
   @Test
   public void failOnUseAfterBuild() {
     try (Graph g = new Graph();
-        Tensor t = Tensor.create(1)) {
+        Tensor<Integer> t = Tensor.create(1, Tensor.intType)) {
       OperationBuilder b =
           g.opBuilder("Const", "Const").setAttr("dtype", t.dataType()).setAttr("value", t);
       b.build();
@@ -64,7 +65,7 @@ public class OperationBuilderTest {
   public void failOnUseAfterGraphClose() {
     OperationBuilder b = null;
     try (Graph g = new Graph();
-        Tensor t = Tensor.create(1)) {
+        Tensor<Integer> t = Tensor.create(1, Tensor.intType)) {
       b = g.opBuilder("Const", "Const").setAttr("dtype", t.dataType()).setAttr("value", t);
     }
     try {
@@ -85,7 +86,7 @@ public class OperationBuilderTest {
     // types that aren't inferred from the input arguments.
     try (Graph g = new Graph()) {
       // dtype, tensor attributes.
-      try (Tensor t = Tensor.create(1)) {
+      try (Tensor<Integer> t = Tensor.create(1, Tensor.intType)) {
         g.opBuilder("Const", "DataTypeAndTensor")
             .setAttr("dtype", DataType.INT32)
             .setAttr("value", t)
@@ -127,7 +128,7 @@ public class OperationBuilderTest {
   @Test
   public void setAttrShape() {
     try (Graph g = new Graph()) {
-      Output n =
+      Output<?> n =
           g.opBuilder("Placeholder", "unknown")
               .setAttr("dtype", DataType.FLOAT)
               .setAttr("shape", Shape.unknown())
@@ -153,9 +154,9 @@ public class OperationBuilderTest {
   public void addControlInput() {
     try (Graph g = new Graph();
         Session s = new Session(g);
-        Tensor yes = Tensor.create(true);
-        Tensor no = Tensor.create(false)) {
-      Output placeholder = TestUtil.placeholder(g, "boolean", DataType.BOOL);
+        Tensor<Boolean> yes = Tensor.create(true);
+        Tensor<Boolean> no = Tensor.create(false)) {
+      Output<Boolean> placeholder = TestUtil.placeholder(g, "boolean", Tensor.boolType);
       Operation check =
           g.opBuilder("Assert", "assert")
               .addInput(placeholder)

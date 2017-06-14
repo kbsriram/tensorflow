@@ -18,10 +18,10 @@ package org.tensorflow;
 /**
  * A symbolic handle to a tensor produced by an {@link Operation}.
  *
- * <p>An Output is a symbolic handle to a tensor. The value of the Tensor is computed by executing
+ * <p>An Output<T> is a symbolic handle to a Tensor<T>. The value of the tensor is computed by executing
  * the {@link Operation} in a {@link Session}.
  */
-public final class Output {
+public final class Output<T> {
 
   /** Handle to the idx-th output of the Operation {@code op}. */
   public Output(Operation op, int idx) {

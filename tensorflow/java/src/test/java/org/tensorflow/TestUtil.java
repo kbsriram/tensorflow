@@ -19,26 +19,52 @@ import java.lang.reflect.Array;
 
 /** Static utility functions. */
 public class TestUtil {
-  public static Output constant(Graph g, String name, Object value) {
-    try (Tensor t = Tensor.create(value)) {
+	public static Output<Integer> constant(Graph g, String name, int value) {
+		try (Tensor<Integer> t = Tensor.create(value, Tensor.intType)) {
+			return g.opBuilder("Const", name)
+					.setAttr("dtype", DataType.INT32)
+					.setAttr("value", t)
+					.build()
+					.output(0);
+		}
+	}
+	
+	/** Deprecated. Does not check that the value's type and T match. */
+	public static <T> Output<T> constant(Graph g, String name, Object value) {
+    try (Tensor<T> t = Tensor.create_unsafe(value)) {
       return g.opBuilder("Const", name)
           .setAttr("dtype", t.dataType())
           .setAttr("value", t)
           .build()
           .output(0);
+      }    
     }
+	public static <T> Output<T> constant(Graph g, String name, Object value, T[] type) {
+	    try (Tensor<T> t = Tensor.create(value, type)) {
+	      return g.opBuilder("Const", name)
+	          .setAttr("dtype", t.dataType())
+	          .setAttr("value", t)
+	          .build()
+	          .output(0);
+	    }
   }
 
-  public static Output placeholder(Graph g, String name, DataType dtype) {
+  public static Output<?> placeholder(Graph g, String name, DataType dtype) {
     return g.opBuilder("Placeholder", name).setAttr("dtype", dtype).build().output(0);
   }
+  
+  @SuppressWarnings("unchecked") public static <T> Output<T> placeholder(Graph g, String name, T[] type) {
+	  DataType dtype = Tensor.dataTypeOf(type);
+	    return (Output<T>)g.opBuilder("Placeholder", name).setAttr("dtype", dtype).build().output(0);
+  }
 
-  public static Output addN(Graph g, Output... inputs) {
+  
+  public static Output<?> addN(Graph g, Output<?>... inputs) {
     return g.opBuilder("AddN", "AddN").addInputList(inputs).build().output(0);
   }
 
-  public static Output matmul(
-      Graph g, String name, Output a, Output b, boolean transposeA, boolean transposeB) {
+  public static <T> Output<T> matmul(
+      Graph g, String name, Output<T> a, Output<T> b, boolean transposeA, boolean transposeB) {
     return g.opBuilder("MatMul", name)
         .addInput(a)
         .addInput(b)

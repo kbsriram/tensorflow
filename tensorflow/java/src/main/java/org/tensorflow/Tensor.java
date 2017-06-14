@@ -33,7 +33,7 @@ import java.util.Arrays;
  *
  * <p><b>WARNING:</b> Resources consumed by the Tensor object <b>must</b> be explicitly freed by
  * invoking the {@link #close()} method when the object is no longer needed. For example, using a
- * try-with-resources block like:
+ * try-with-resources block, like:
  *
  * <pre>{@code
  * try(Tensor t = Tensor.create(...)) {
@@ -41,8 +41,21 @@ import java.util.Arrays;
  * }
  * }</pre>
  */
-public final class Tensor implements AutoCloseable {
-
+public final class Tensor<T> implements AutoCloseable {
+ 
+  // If exposing types in this way is too "raw", we can always
+  // create a wrapper BaseType<T> so that intType is a BaseType<Integer>
+  // etc. That would make it a little easier to convert to DataTypes
+  // too.
+  public static final Integer[] intType = {};
+  public static final Boolean[] boolType = {};
+  public static final Double[] doubleType = {};
+  public static final Long[] longType = {};
+  public static final String[] stringType = {};
+  public static final Byte[] uint8Type = {}; // XXX Byte is not really a uint8
+  public static final Float[] floatType = {};
+  public static final Byte[] byteType = uint8Type;
+	
   /**
    * Create a Tensor from a Java object.
    *
@@ -75,9 +88,15 @@ public final class Tensor implements AutoCloseable {
    *     system, or if obj does not disambiguate between multiple DataTypes. In that case, consider
    *     using {@link #create(DataType, long[], ByteBuffer)} instead.
    */
-  public static Tensor create(Object obj) {
-    Tensor t = new Tensor();
-    t.dtype = dataTypeOf(obj);
+  public static <T> Tensor<T> create(Object obj, T[] dummy) {
+	DataType dt1 = dataTypeOf(obj);
+	DataType dt2 = dataTypeOf(dummy);
+	if (!dt1.equals(dt2)) throw new IllegalArgumentException("Data type of object does not match T");
+	return create_unsafe(obj);
+  }
+  
+  public static <T> Tensor<T> create_unsafe(Object obj) {
+    Tensor<T> t = new Tensor<T>(dataTypeOf(obj));
     t.shapeCopy = new long[numDimensions(obj)];
     fillShape(obj, 0, t.shapeCopy);
     if (t.dtype != DataType.STRING) {
@@ -94,7 +113,55 @@ public final class Tensor implements AutoCloseable {
     }
     return t;
   }
-
+  
+  public static Tensor<Float> create(float data) {
+	  return create(data, floatType);
+  }
+  public static Tensor<Float> create(float[] data) {
+	  return create(data, floatType);
+  }
+  public static Tensor<Float> create(float[][] data) {
+	  return create(data, floatType);
+  }
+  public static Tensor<Double> create(double[] data) {
+	  return create(data, doubleType);
+  }
+  public static Tensor<Integer> create(int data) {
+	  return create(data, intType);
+  }
+  public static Tensor<Integer> create(int[] data) {
+	  return create(data, intType);
+  }
+  public static Tensor<Integer> create(int[][] data) {
+	  return create(data, intType);
+  }
+  public static Tensor<Integer> create(int[][][] data) {
+	  return create(data, intType);
+  }
+  public static Tensor<Long> create(long data) {
+	  return create(data, longType);
+  }
+  public static Tensor<Long> create(long[] data) {
+	  return create(data, longType);
+  }
+  public static Tensor<Long> create(long[][] data) {
+	  return create(data, longType);
+  }
+  public static Tensor<Long> create(long[][][] data) {
+	  return create(data, longType);
+  }
+  public static Tensor<Byte> create(byte[] data) {
+	  return create(data, byteType);
+  }
+  public static Tensor<Byte> create(byte[][] data) {
+	  return create(data, byteType);
+  }
+  public static Tensor<Byte> create(byte[][][] data) {
+	  return create(data, byteType);
+  }
+  public static Tensor<Boolean> create(boolean data) {
+	  return create(data, boolType);
+  }
   /**
    * Create an {@link DataType#INT32} Tensor with data from the given buffer.
    *
@@ -107,8 +174,8 @@ public final class Tensor implements AutoCloseable {
    * @param data a buffer containing the tensor data.
    * @throws IllegalArgumentException If the tensor shape is not compatible with the buffer
    */
-  public static Tensor create(long[] shape, IntBuffer data) {
-    Tensor t = allocateForBuffer(DataType.INT32, shape, data.remaining());
+  public static Tensor<Integer> create(long[] shape, IntBuffer data) {
+    Tensor<Integer> t = allocateForBuffer(DataType.INT32, shape, data.remaining());
     t.buffer().asIntBuffer().put(data);
     return t;
   }
@@ -125,8 +192,8 @@ public final class Tensor implements AutoCloseable {
    * @param data a buffer containing the tensor data.
    * @throws IllegalArgumentException If the tensor shape is not compatible with the buffer
    */
-  public static Tensor create(long[] shape, FloatBuffer data) {
-    Tensor t = allocateForBuffer(DataType.FLOAT, shape, data.remaining());
+  public static Tensor<Float> create(long[] shape, FloatBuffer data) {
+    Tensor<Float> t = allocateForBuffer(DataType.FLOAT, shape, data.remaining());
     t.buffer().asFloatBuffer().put(data);
     return t;
   }
@@ -143,8 +210,8 @@ public final class Tensor implements AutoCloseable {
    * @param data a buffer containing the tensor data.
    * @throws IllegalArgumentException If the tensor shape is not compatible with the buffer
    */
-  public static Tensor create(long[] shape, DoubleBuffer data) {
-    Tensor t = allocateForBuffer(DataType.DOUBLE, shape, data.remaining());
+  public static Tensor<Double> create(long[] shape, DoubleBuffer data) {
+    Tensor<Double> t = allocateForBuffer(DataType.DOUBLE, shape, data.remaining());
     t.buffer().asDoubleBuffer().put(data);
     return t;
   }
@@ -161,8 +228,8 @@ public final class Tensor implements AutoCloseable {
    * @param data a buffer containing the tensor data.
    * @throws IllegalArgumentException If the tensor shape is not compatible with the buffer
    */
-  public static Tensor create(long[] shape, LongBuffer data) {
-    Tensor t = allocateForBuffer(DataType.INT64, shape, data.remaining());
+  public static Tensor<Long> create(long[] shape, LongBuffer data) {
+    Tensor<Long> t = allocateForBuffer(DataType.INT64, shape, data.remaining());
     t.buffer().asLongBuffer().put(data);
     return t;
   }
@@ -180,28 +247,43 @@ public final class Tensor implements AutoCloseable {
    * @throws IllegalArgumentException If the tensor datatype or shape is not compatible with the
    *     buffer
    */
-  public static Tensor create(DataType dataType, long[] shape, ByteBuffer data) {
+  public static <T> Tensor<T> create(T[] type, long[] shape, ByteBuffer data) {
+	DataType dataType = dataTypeOf(type);
     int nremaining = 0;
     if (dataType != DataType.STRING) {
       int elemBytes = elemByteSize(dataType);
       if (data.remaining() % elemBytes != 0) {
-        throw new IllegalArgumentException(
-            String.format(
-                "ByteBuffer with %d bytes is not compatible with a %s Tensor (%d bytes/element)",
-                data.remaining(), dataType.toString(), elemBytes));
+    	  throw new IllegalArgumentException(
+    				  String.format(
+    						  "ByteBuffer with %d bytes is not compatible with a %s Tensor (%d bytes/element)",
+    						  data.remaining(), dataType.toString(), elemBytes));
       }
       nremaining = data.remaining() / elemBytes;
     } else {
       nremaining = data.remaining();
     }
-    Tensor t = allocateForBuffer(dataType, shape, nremaining);
+    Tensor<T> t = allocateForBuffer(dataType, shape, nremaining);
     t.buffer().put(data);
     return t;
+  }
+  
+  /** View this Tensor object as the type Tensor<U>. An exception is
+   * thrown if the actual data type of this object does not match the type {@code U}.
+   * This method is useful when given a value of type {@code Tensor<?>}.
+   * @param dummy any (non-null) array of the correct type.
+   * @return this
+   */
+ @SuppressWarnings("unchecked") public <U> Tensor<U> expect(U[] dummy) {
+	  DataType dt = dataTypeOf(dummy);
+	  if (!dt.equals(dtype))
+		  throw new IllegalArgumentException("Cannot cast from tensor of " + dtype + " to tensor of " + dt);
+	  return ((Tensor<U>) this); 
   }
 
   // Helper function to allocate a Tensor for the create() methods that create a Tensor from
   // a java.nio.Buffer.
-  private static Tensor allocateForBuffer(DataType dataType, long[] shape, int nBuffered) {
+  // Requires: dataType matches T
+  private static <T> Tensor<T> allocateForBuffer(DataType dataType, long[] shape, int nBuffered) {
     final int nflattened = numElements(shape);
     int nbytes = 0;
     if (dataType != DataType.STRING) {
@@ -213,8 +295,7 @@ public final class Tensor implements AutoCloseable {
       // DT_STRING tensor encoded in a ByteBuffer.
       nbytes = nBuffered;
     }
-    Tensor t = new Tensor();
-    t.dtype = dataType;
+    Tensor<T> t = new Tensor<T>(dataType);
     t.shapeCopy = Arrays.copyOf(shape, shape.length);
     t.nativeHandle = allocate(t.dtype.c(), t.shapeCopy, nbytes);
     return t;
@@ -348,7 +429,7 @@ public final class Tensor implements AutoCloseable {
    * @throws IllegalArgumentException if the tensor is a scalar or if {@code dst} is not compatible
    *     with the tensor (for example, mismatched data types or shapes).
    */
-  public <T> T copyTo(T dst) {
+  public <U> U copyTo(U dst) {
     throwExceptionIfTypeIsIncompatible(dst);
     readNDArray(nativeHandle, dst);
     return dst;
@@ -451,9 +532,8 @@ public final class Tensor implements AutoCloseable {
    *
    * <p>Takes ownership of the handle.
    */
-  static Tensor fromHandle(long handle) {
-    Tensor t = new Tensor();
-    t.dtype = DataType.fromC(dtype(handle));
+  static <T> Tensor<T> fromHandle(long handle) {
+    Tensor<T> t = new Tensor<T>(DataType.fromC(dtype(handle)));
     t.shapeCopy = shape(handle);
     t.nativeHandle = handle;
     return t;
@@ -467,7 +547,14 @@ public final class Tensor implements AutoCloseable {
   private DataType dtype;
   private long[] shapeCopy = null;
 
-  private Tensor() {}
+  /**
+   * Create a tensor containing datatype t
+   * 
+   *  <p>Requires: t must match T
+   */
+  private Tensor(DataType t) {
+    dtype = t;
+  }
 
   private ByteBuffer buffer() {
     return buffer(nativeHandle).order(ByteOrder.nativeOrder());
@@ -512,7 +599,7 @@ public final class Tensor implements AutoCloseable {
     throw new IllegalArgumentException("DataType " + dataType + " is not supported yet");
   }
 
-  private static DataType dataTypeOf(Object o) {
+  public static DataType dataTypeOf(Object o) {
     if (o.getClass().isArray()) {
       if (Array.getLength(o) == 0) {
         throw new IllegalArgumentException("cannot create Tensors with a 0 dimension");

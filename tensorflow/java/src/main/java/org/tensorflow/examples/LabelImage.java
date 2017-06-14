@@ -61,7 +61,7 @@ public class LabelImage {
         readAllLinesOrExit(Paths.get(modelDir, "imagenet_comp_graph_label_strings.txt"));
     byte[] imageBytes = readAllBytesOrExit(Paths.get(imageFile));
 
-    try (Tensor image = constructAndExecuteGraphToNormalizeImage(imageBytes)) {
+    try (Tensor<Float> image = constructAndExecuteGraphToNormalizeImage(imageBytes)) {
       float[] labelProbabilities = executeInceptionGraph(graphDef, image);
       int bestLabelIdx = maxIndex(labelProbabilities);
       System.out.println(
@@ -71,7 +71,7 @@ public class LabelImage {
     }
   }
 
-  private static Tensor constructAndExecuteGraphToNormalizeImage(byte[] imageBytes) {
+  private static Tensor<Float> constructAndExecuteGraphToNormalizeImage(byte[] imageBytes) {
     try (Graph g = new Graph()) {
       GraphBuilder b = new GraphBuilder(g);
       // Some constants specific to the pre-trained model at:
@@ -88,28 +88,28 @@ public class LabelImage {
       // Since the graph is being constructed once per execution here, we can use a constant for the
       // input image. If the graph were to be re-used for multiple input images, a placeholder would
       // have been more appropriate.
-      final Output input = b.constant("input", imageBytes);
-      final Output output =
+      final Output<Byte> input = b.constant("input", imageBytes);
+      final Output<Float> output =
           b.div(
               b.sub(
                   b.resizeBilinear(
                       b.expandDims(
-                          b.cast(b.decodeJpeg(input, 3), DataType.FLOAT),
+                          b.cast(b.decodeJpeg(input, 3), Tensor.floatType),
                           b.constant("make_batch", 0)),
                       b.constant("size", new int[] {H, W})),
                   b.constant("mean", mean)),
               b.constant("scale", scale));
       try (Session s = new Session(g)) {
-        return s.runner().fetch(output.op().name()).run().get(0);
+        return s.runner().fetch(output.op().name()).run().get(0).expect(Tensor.floatType);
       }
     }
   }
 
-  private static float[] executeInceptionGraph(byte[] graphDef, Tensor image) {
+  private static float[] executeInceptionGraph(byte[] graphDef, Tensor<Float> image) {
     try (Graph g = new Graph()) {
       g.importGraphDef(graphDef);
       try (Session s = new Session(g);
-          Tensor result = s.runner().feed("input", image).fetch("output").run().get(0)) {
+          Tensor<Float> result = s.runner().feed("input", image).fetch("output").run().get(0).expect(Tensor.floatType)) {
         final long[] rshape = result.shape();
         if (result.numDimensions() != 2 || rshape[0] != 1) {
           throw new RuntimeException(
@@ -161,27 +161,28 @@ public class LabelImage {
       this.g = g;
     }
 
-    Output div(Output x, Output y) {
+    Output<Float> div(Output<Float> x, Output<Float> y) {
       return binaryOp("Div", x, y);
     }
 
-    Output sub(Output x, Output y) {
+    <T> Output<T> sub(Output<T> x, Output<T> y) {
       return binaryOp("Sub", x, y);
     }
 
-    Output resizeBilinear(Output images, Output size) {
-      return binaryOp("ResizeBilinear", images, size);
+    <T> Output<Float> resizeBilinear(Output<T> images, Output<Integer> size) {
+      return binaryOp3("ResizeBilinear", images, size);
     }
 
-    Output expandDims(Output input, Output dim) {
-      return binaryOp("ExpandDims", input, dim);
+    <T> Output<T> expandDims(Output<T> input, Output<Integer> dim) {
+      return binaryOp3("ExpandDims", input, dim);
     }
 
-    Output cast(Output value, DataType dtype) {
+    <T, U> Output<U> cast(Output<T> value, U[] type) {
+      DataType dtype = Tensor.dataTypeOf(type);
       return g.opBuilder("Cast", "Cast").addInput(value).setAttr("DstT", dtype).build().output(0);
     }
 
-    Output decodeJpeg(Output contents, long channels) {
+    Output<Byte> decodeJpeg(Output<Byte> contents, long channels) {
       return g.opBuilder("DecodeJpeg", "DecodeJpeg")
           .addInput(contents)
           .setAttr("channels", channels)
@@ -189,8 +190,8 @@ public class LabelImage {
           .output(0);
     }
 
-    Output constant(String name, Object value) {
-      try (Tensor t = Tensor.create(value)) {
+    <T> Output<T> constant(String name, Object value, T[] type) {
+      try (Tensor<T> t = Tensor.create(value, type)) {
         return g.opBuilder("Const", name)
             .setAttr("dtype", t.dataType())
             .setAttr("value", t)
@@ -198,11 +199,49 @@ public class LabelImage {
             .output(0);
       }
     }
+    Output<Byte> constant(String name, byte[] value) {
+        try (Tensor<Byte> t = Tensor.create(value, Tensor.uint8Type)) {
+          return g.opBuilder("Const", name)
+              .setAttr("dtype", t.dataType())
+              .setAttr("value", t)
+              .build()
+              .output(0);
+        }
+      }
+    Output<Integer> constant(String name, int value) {
+        try (Tensor<Integer> t = Tensor.create(value, Tensor.intType)) {
+          return g.opBuilder("Const", name)
+              .setAttr("dtype", DataType.INT32)
+              .setAttr("value", t)
+              .build()
+              .output(0);
+        }
+      }
+    Output<Integer> constant(String name, int[] value) {
+        try (Tensor<Integer> t = Tensor.create(value, Tensor.intType)) {
+          return g.opBuilder("Const", name)
+              .setAttr("dtype", DataType.INT32)
+              .setAttr("value", t)
+              .build()
+              .output(0);
+        }
+      }
+    Output<Float> constant(String name, float value) {
+        try (Tensor<Float> t = Tensor.create(value, Tensor.floatType)) {
+          return g.opBuilder("Const", name)
+              .setAttr("dtype", DataType.FLOAT)
+              .setAttr("value", t)
+              .build()
+              .output(0);
+        }
+      }
 
-    private Output binaryOp(String type, Output in1, Output in2) {
+    private <T> Output<T> binaryOp(String type, Output<T> in1, Output<T> in2) {
       return g.opBuilder(type, type).addInput(in1).addInput(in2).build().output(0);
     }
-
+    private <T, U, V> Output<T> binaryOp3(String type, Output<U> in1, Output<V> in2) {
+    	 return g.opBuilder(type, type).addInput(in1).addInput(in2).build().output(0);
+    }
     private Graph g;
   }
 }
