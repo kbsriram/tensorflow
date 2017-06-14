@@ -161,3 +161,71 @@ EP_DISABLED_CHECKS = [
 EP_OPTS = EP_ENABLED_WARNINGS + EP_DISABLED_CHECKS
 
 JAVACOPTS = JAVA_VERSION_OPTS + XLINT_OPTS + EP_OPTS
+
+"""Generate java test rules from given test_files.
+Instead of having to create one test rule per test in the BUILD file, this rule
+provides a handy way to create a bunch of test rules for the specified test
+files.
+"""
+
+def GenTestRules(name,
+                 test_files,
+                 deps,
+                 exclude_tests=[],
+                 default_test_size="small",
+                 small_tests=[],
+                 medium_tests=[],
+                 large_tests=[],
+                 enormous_tests=[],
+                 resources=[],
+                 flaky_tests=[],
+                 tags=[],
+                 prefix="",
+                 javacopts=[],
+                 jvm_flags=[],
+                 args=[],
+                 visibility=None,
+                 shard_count=1):
+  for test in _get_test_names(test_files):
+    if test in exclude_tests:
+      continue
+    test_size = default_test_size
+    if test in small_tests:
+      test_size = "small"
+    if test in medium_tests:
+      test_size = "medium"
+    if test in large_tests:
+      test_size = "large"
+    if test in enormous_tests:
+      test_size = "enormous"
+    flaky = 0
+    if (test in flaky_tests) or ("flaky" in tags):
+      flaky = 1
+    tf_suffix = _tf_suffix_from_path(test)
+    native.java_test(name = tf_suffix,
+                     srcs = [test + ".java"],
+                     deps = deps,
+                     resources = resources,
+                     size = test_size,
+                     jvm_flags = jvm_flags,
+                     javacopts = javacopts,
+                     args = args,
+                     flaky = flaky,
+                     tags = tags,
+                     test_class = "org.tensorflow." + tf_suffix.replace('/', '.'),
+                     visibility = visibility,
+                     shard_count = shard_count)
+
+def _get_test_names(test_files):
+  test_names = []
+  for test_file in test_files:
+    if not test_file.endswith("Test.java"):
+      continue
+    test_names += [test_file[:-5]]
+
+  return test_names
+
+
+def _tf_suffix_from_path(path):
+  """Strip off src/test/java/org/tensorflow/ from the path."""
+  return path[len("src/test/java/org/tensorflow/"):]

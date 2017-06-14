@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])  # Apache 2.0
 
-load("build_defs", "JAVACOPTS")
+load("build_defs", "JAVACOPTS", "GenTestRules")
 
 java_library(
     name = "tensorflow",
@@ -46,38 +46,14 @@ java_library(
     deps = [":tensorflow"],
 )
 
-java_test(
-    name = "GraphTest",
-    size = "small",
-    srcs = ["src/test/java/org/tensorflow/GraphTest.java"],
+GenTestRules(
+    name = "GeneratedTestRules",
+    exclude_tests = ["src/test/java/org/tensorflow/SavedModelBundleTest"],
     javacopts = JAVACOPTS,
-    test_class = "org.tensorflow.GraphTest",
-    deps = [
-        ":tensorflow",
-        ":testutil",
-        "@junit",
-    ],
-)
-
-java_test(
-    name = "OperationBuilderTest",
-    size = "small",
-    srcs = ["src/test/java/org/tensorflow/OperationBuilderTest.java"],
-    javacopts = JAVACOPTS,
-    test_class = "org.tensorflow.OperationBuilderTest",
-    deps = [
-        ":tensorflow",
-        ":testutil",
-        "@junit",
-    ],
-)
-
-java_test(
-    name = "OperationTest",
-    size = "small",
-    srcs = ["src/test/java/org/tensorflow/OperationTest.java"],
-    javacopts = JAVACOPTS,
-    test_class = "org.tensorflow.OperationTest",
+    test_files = glob([
+        "src/test/java/org/tensorflow/*Test.java",
+        "src/test/java/org/tensorflow/op/*Test.java",
+    ]),
     deps = [
         ":tensorflow",
         ":testutil",
@@ -92,70 +68,6 @@ java_test(
     data = ["//tensorflow/cc/saved_model:saved_model_half_plus_two"],
     javacopts = JAVACOPTS,
     test_class = "org.tensorflow.SavedModelBundleTest",
-    deps = [
-        ":tensorflow",
-        ":testutil",
-        "@junit",
-    ],
-)
-
-java_test(
-    name = "SessionTest",
-    size = "small",
-    srcs = ["src/test/java/org/tensorflow/SessionTest.java"],
-    javacopts = JAVACOPTS,
-    test_class = "org.tensorflow.SessionTest",
-    deps = [
-        ":tensorflow",
-        ":testutil",
-        "@junit",
-    ],
-)
-
-java_test(
-    name = "ShapeTest",
-    size = "small",
-    srcs = ["src/test/java/org/tensorflow/ShapeTest.java"],
-    javacopts = JAVACOPTS,
-    test_class = "org.tensorflow.ShapeTest",
-    deps = [
-        ":tensorflow",
-        ":testutil",
-        "@junit",
-    ],
-)
-
-java_test(
-    name = "TensorFlowTest",
-    size = "small",
-    srcs = ["src/test/java/org/tensorflow/TensorFlowTest.java"],
-    javacopts = JAVACOPTS,
-    test_class = "org.tensorflow.TensorFlowTest",
-    deps = [
-        ":tensorflow",
-        "@junit",
-    ],
-)
-
-java_test(
-    name = "TensorTest",
-    size = "small",
-    srcs = ["src/test/java/org/tensorflow/TensorTest.java"],
-    javacopts = JAVACOPTS,
-    test_class = "org.tensorflow.TensorTest",
-    deps = [
-        ":tensorflow",
-        ":testutil",
-        "@junit",
-    ],
-)
-
-java_test(
-    name = "ScopeTest",
-    size = "small",
-    srcs = ["src/test/java/org/tensorflow/op/ScopeTest.java"],
-    javacopts = JAVACOPTS,
-    test_class = "org.tensorflow.op.ScopeTest",
     deps = [
         ":tensorflow",
         ":testutil",
