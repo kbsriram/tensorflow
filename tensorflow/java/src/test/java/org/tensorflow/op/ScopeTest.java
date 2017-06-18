@@ -22,6 +22,7 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.tensorflow.BaseType;
 import org.tensorflow.Graph;
 import org.tensorflow.Output;
 import org.tensorflow.Session;
@@ -122,13 +123,13 @@ public class ScopeTest {
   public void basic() {
     try (Graph g = new Graph()) {
       Scope s = new Scope(g);
-      Const c1 = Const.create(s, 42);
+      Const<Integer> c1 = Const.create(s, 42);
       assertEquals("Const", c1.output().op().name());
-      Const c2 = Const.create(s, 7);
+      Const<Integer> c2 = Const.create(s, 7);
       assertEquals("Const_1", c2.output().op().name());
-      Const c3 = Const.create(s.withName("four"), 4);
+      Const<Integer> c3 = Const.create(s.withName("four"), 4);
       assertEquals("four", c3.output().op().name());
-      Const c4 = Const.create(s.withName("four"), 4);
+      Const<Integer> c4 = Const.create(s.withName("four"), 4);
       assertEquals("four_1", c4.output().op().name());
     }
   }
@@ -148,10 +149,10 @@ public class ScopeTest {
     try (Graph g = new Graph();
         Session sess = new Session(g)) {
       Scope s = new Scope(g);
-      Output data = Const.create(s.withName("data"), new int[] {600, 470, 170, 430, 300}).output();
+      Output<Integer> data = Const.create(s.withName("data"), new int[] {600, 470, 170, 430, 300}).output();
 
       // Create a composite op with a customized name
-      Variance var1 = Variance.create(s.withName("example"), data);
+      Variance<Integer> var1 = Variance.create(s.withName("example"), data);
       assertEquals("example/variance", var1.output().op().name());
 
       // Confirm internally added ops have the right names.
@@ -160,7 +161,7 @@ public class ScopeTest {
       assertNotNull(g.operation("example/zero"));
 
       // Same composite op with a default name
-      Variance var2 = Variance.create(s, data);
+      Variance<Integer> var2 = Variance.create(s, data);
       assertEquals("variance/variance", var2.output().op().name());
 
       // Confirm internally added ops have the right names.
@@ -169,20 +170,29 @@ public class ScopeTest {
       assertNotNull(g.operation("variance/zero"));
 
       // Verify correct results as well.
-      Tensor result = sess.runner().fetch(var1.output()).run().get(0);
+      Tensor<Integer> result = sess.runner().fetch(var1.output()).run().get(0).expect(BaseType.Int);
       assertEquals(21704, result.intValue());
-      result = sess.runner().fetch(var2.output()).run().get(0);
+      result = sess.runner().fetch(var2.output()).run().get(0).expect(BaseType.Int);
       assertEquals(21704, result.intValue());
     }
   }
 
   // "handwritten" sample operator classes
-  private static final class Const {
-    private final Output output;
-
-    static Const create(Scope s, Object v) {
-      try (Tensor value = Tensor.create(v)) {
-        return new Const(
+  private static final class Const<T> {
+    private final Output<T> output;
+    
+    static Const<Integer> create(Scope s, int v) {
+    	return create(s, v, BaseType.Int);
+    }
+    static Const<Integer> create(Scope s, int[] v) {
+    	return create(s, v, BaseType.Int);
+    }
+    static Const<Integer> create(Scope s, int[][] v) {
+    	return create(s, v, BaseType.Int);
+    }
+    static <T> Const<T> create(Scope s, Object v, BaseType<T> type) {
+      try (Tensor<T> value = Tensor.create(v, type)) {
+        return new Const<T>(
             s.graph()
                 .opBuilder("Const", s.makeOpName("Const"))
                 .setAttr("dtype", value.dataType())
@@ -192,20 +202,20 @@ public class ScopeTest {
       }
     }
 
-    Const(Output o) {
+    Const(Output<T> o) {
       output = o;
     }
 
-    Output output() {
+    Output<T> output() {
       return output;
     }
   }
 
-  private static final class Mean {
-    private final Output output;
+  private static final class Mean<T> {
+    private final Output<T> output;
 
-    static Mean create(Scope s, Output input, Output reductionIndices) {
-      return new Mean(
+    static <T> Mean<T> create(Scope s, Output<T> input, Output<T> reductionIndices) {
+      return new Mean<T>(
           s.graph()
               .opBuilder("Mean", s.makeOpName("Mean"))
               .addInput(input)
@@ -214,20 +224,34 @@ public class ScopeTest {
               .output(0));
     }
 
-    Mean(Output o) {
+    Mean(Output<T> o) {
       output = o;
     }
 
-    Output output() {
+    Output<T> output() {
       return output;
     }
   }
+  
+  @SuppressWarnings("unchecked")
+  private static final class Promote {
+	static Output<Float> toFloat(Output<Integer> o) {
+		  return (Output<Float>)(Output<?>) o;
+	  }
+	  static Output<Double> toDouble(Output<Integer> o) {
+		  return (Output<Double>)(Output<?>) o;
+	  }
+	  // allow an arbitrary unchecked promotion -- not safe
+	  static <T> Output<T> from(Output<Integer> o) {
+		  return (Output<T>) (Output<?>) o;
+	  }
+  }
+  
+  private static final class SquaredDifference<T> {
+    private final Output<T> output;
 
-  private static final class SquaredDifference {
-    private final Output output;
-
-    static SquaredDifference create(Scope s, Output x, Output y) {
-      return new SquaredDifference(
+    static <T> SquaredDifference<T> create(Scope s, Output<T> x, Output<T> y) {
+      return new SquaredDifference<T>(
           s.graph()
               .opBuilder("SquaredDifference", s.makeOpName("SquaredDifference"))
               .addInput(x)
@@ -236,27 +260,27 @@ public class ScopeTest {
               .output(0));
     }
 
-    SquaredDifference(Output o) {
+    SquaredDifference(Output<T> o) {
       output = o;
     }
 
-    Output output() {
+    Output<T> output() {
       return output;
     }
   }
 
-  private static final class Variance {
-    private final Output output;
+  private static final class Variance<T> {
+    private final Output<T> output;
 
-    static Variance create(Scope base, Output x) {
+    static <T> Variance<T> create(Scope base, Output<T> x) {
       Scope s = base.withSubScope("variance");
-      Output zero = Const.create(s.withName("zero"), new int[] {0}).output();
-      Output sqdiff =
+      Output<T> zero = Promote.from(Const.create(s.withName("zero"), new int[] {0}, BaseType.Int).output());
+      Output<T> sqdiff =
           SquaredDifference.create(
                   s.withName("squared_deviation"), x, Mean.create(s, x, zero).output())
               .output();
 
-      return new Variance(Mean.create(s.withName("variance"), sqdiff, zero).output());
+      return new Variance<T>(Mean.create(s.withName("variance"), sqdiff, zero).output());
     }
 
     Variance(Output o) {

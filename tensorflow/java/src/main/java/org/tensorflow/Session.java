@@ -151,7 +151,7 @@ public final class Session implements AutoCloseable {
      * Use {@code t} instead of the Tensor referred to by executing the operation referred to by
      * {@code output}.
      */
-    public Runner feed(Output o, Tensor<?> t) {
+    public Runner feed(Output<?> o, Tensor<?> t) {
       inputs.add(o);
       inputTensors.add(t);
       return this;
@@ -186,7 +186,7 @@ public final class Session implements AutoCloseable {
     }
 
     /** Makes {@link #run()} return the Tensor referred to by {@code output}. */
-    public Runner fetch(Output output) {
+    public Runner fetch(Output<?> output) {
       outputs.add(output);
       return this;
     }
@@ -273,13 +273,13 @@ public final class Session implements AutoCloseable {
         inputTensorHandles[idx++] = t.getNativeHandle();
       }
       idx = 0;
-      for (Output o : inputs) {
+      for (Output<?> o : inputs) {
         inputOpHandles[idx] = o.op().getUnsafeNativeHandle();
         inputOpIndices[idx] = o.index();
         idx++;
       }
       idx = 0;
-      for (Output o : outputs) {
+      for (Output<?> o : outputs) {
         outputOpHandles[idx] = o.op().getUnsafeNativeHandle();
         outputOpIndices[idx] = o.index();
         idx++;
@@ -355,7 +355,7 @@ public final class Session implements AutoCloseable {
       return op;
     }
 
-    private Output parseOutput(String opName) {
+    private Output<?> parseOutput(String opName) {
       int colon = opName.lastIndexOf(':');
       if (colon == -1 || colon == opName.length() - 1) {
         return new Output(operationByName(opName), 0);
@@ -369,9 +369,9 @@ public final class Session implements AutoCloseable {
       }
     }
 
-    private ArrayList<Output> inputs = new ArrayList<Output>();
+    private ArrayList<Output<?>> inputs = new ArrayList<Output<?>>();
     private ArrayList<Tensor<?>> inputTensors = new ArrayList<Tensor<?>>();
-    private ArrayList<Output> outputs = new ArrayList<Output>();
+    private ArrayList<Output<?>> outputs = new ArrayList<Output<?>>();
     private ArrayList<Operation> targets = new ArrayList<Operation>();
     private byte[] runOptions = null;
   }

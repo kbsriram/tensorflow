@@ -20,7 +20,7 @@ import java.lang.reflect.Array;
 /** Static utility functions. */
 public class TestUtil {
 	public static Output<Integer> constant(Graph g, String name, int value) {
-		try (Tensor<Integer> t = Tensor.create(value, Tensor.intType)) {
+		try (Tensor<Integer> t = Tensor.create(value, BaseType.Int)) {
 			return g.opBuilder("Const", name)
 					.setAttr("dtype", DataType.INT32)
 					.setAttr("value", t)
@@ -39,7 +39,7 @@ public class TestUtil {
           .output(0);
       }    
     }
-	public static <T> Output<T> constant(Graph g, String name, Object value, T[] type) {
+	public static <T> Output<T> constant(Graph g, String name, Object value, BaseType<T> type) {
 	    try (Tensor<T> t = Tensor.create(value, type)) {
 	      return g.opBuilder("Const", name)
 	          .setAttr("dtype", t.dataType())
@@ -52,12 +52,9 @@ public class TestUtil {
   public static Output<?> placeholder(Graph g, String name, DataType dtype) {
     return g.opBuilder("Placeholder", name).setAttr("dtype", dtype).build().output(0);
   }
-  
-  @SuppressWarnings("unchecked") public static <T> Output<T> placeholder(Graph g, String name, T[] type) {
-	  DataType dtype = Tensor.dataTypeOf(type);
-	    return (Output<T>)g.opBuilder("Placeholder", name).setAttr("dtype", dtype).build().output(0);
+  public static <T> Output<T> placeholder(Graph g, String name, BaseType<T> type) {
+	return g.opBuilder("Placeholder", name).setAttr("dtype", type.dataType()).build().output(0);
   }
-
   
   public static Output<?> addN(Graph g, Output<?>... inputs) {
     return g.opBuilder("AddN", "AddN").addInputList(inputs).build().output(0);

@@ -63,7 +63,7 @@ public final class OperationBuilder {
     }
   }
 
-  public OperationBuilder addInput(Output input) {
+  public OperationBuilder addInput(Output<?> input) {
     Graph.Reference r = graph.ref();
     try {
       addInput(unsafeNativeHandle, input.op().getUnsafeNativeHandle(), input.index());

@@ -41,21 +41,8 @@ import java.util.Arrays;
  * }
  * }</pre>
  */
-public final class Tensor<T> implements AutoCloseable {
- 
-  // If exposing types in this way is too "raw", we can always
-  // create a wrapper BaseType<T> so that intType is a BaseType<Integer>
-  // etc. That would make it a little easier to convert to DataTypes
-  // too.
-  public static final Integer[] intType = {};
-  public static final Boolean[] boolType = {};
-  public static final Double[] doubleType = {};
-  public static final Long[] longType = {};
-  public static final String[] stringType = {};
-  public static final Byte[] uint8Type = {}; // XXX Byte is not really a uint8
-  public static final Float[] floatType = {};
-  public static final Byte[] byteType = uint8Type;
-	
+abstract public class Tensor<T> {
+
   /**
    * Create a Tensor from a Java object.
    *
@@ -88,15 +75,15 @@ public final class Tensor<T> implements AutoCloseable {
    *     system, or if obj does not disambiguate between multiple DataTypes. In that case, consider
    *     using {@link #create(DataType, long[], ByteBuffer)} instead.
    */
-  public static <T> Tensor<T> create(Object obj, T[] dummy) {
+  public static <T> Tensor<T> create(Object obj, BaseType<T> baseType) {
 	DataType dt1 = dataTypeOf(obj);
-	DataType dt2 = dataTypeOf(dummy);
+	DataType dt2 = baseType.dataType();
 	if (!dt1.equals(dt2)) throw new IllegalArgumentException("Data type of object does not match T");
 	return create_unsafe(obj);
   }
   
   public static <T> Tensor<T> create_unsafe(Object obj) {
-    Tensor<T> t = new Tensor<T>(dataTypeOf(obj));
+    TensorValue<T> t = new TensorValue<T>(dataTypeOf(obj));
     t.shapeCopy = new long[numDimensions(obj)];
     fillShape(obj, 0, t.shapeCopy);
     if (t.dtype != DataType.STRING) {
@@ -114,53 +101,54 @@ public final class Tensor<T> implements AutoCloseable {
     return t;
   }
   
+  // XXX where do these methods belong?
   public static Tensor<Float> create(float data) {
-	  return create(data, floatType);
+	  return create(data, BaseType.Float);
   }
   public static Tensor<Float> create(float[] data) {
-	  return create(data, floatType);
+	  return create(data, BaseType.Float);
   }
   public static Tensor<Float> create(float[][] data) {
-	  return create(data, floatType);
+	  return create(data, BaseType.Float);
   }
   public static Tensor<Double> create(double[] data) {
-	  return create(data, doubleType);
+	  return create(data, BaseType.Double);
   }
   public static Tensor<Integer> create(int data) {
-	  return create(data, intType);
+	  return create(data, BaseType.Int);
   }
   public static Tensor<Integer> create(int[] data) {
-	  return create(data, intType);
+	  return create(data, BaseType.Int);
   }
   public static Tensor<Integer> create(int[][] data) {
-	  return create(data, intType);
+	  return create(data, BaseType.Int);
   }
   public static Tensor<Integer> create(int[][][] data) {
-	  return create(data, intType);
+	  return create(data, BaseType.Int);
   }
   public static Tensor<Long> create(long data) {
-	  return create(data, longType);
+	  return create(data, BaseType.Long);
   }
   public static Tensor<Long> create(long[] data) {
-	  return create(data, longType);
+	  return create(data, BaseType.Long);
   }
   public static Tensor<Long> create(long[][] data) {
-	  return create(data, longType);
+	  return create(data, BaseType.Long);
   }
   public static Tensor<Long> create(long[][][] data) {
-	  return create(data, longType);
+	  return create(data, BaseType.Long);
   }
   public static Tensor<Byte> create(byte[] data) {
-	  return create(data, byteType);
+	  return create(data, BaseType.UInt8);
   }
   public static Tensor<Byte> create(byte[][] data) {
-	  return create(data, byteType);
+	  return create(data, BaseType.UInt8);
   }
   public static Tensor<Byte> create(byte[][][] data) {
-	  return create(data, byteType);
+	  return create(data, BaseType.UInt8);
   }
   public static Tensor<Boolean> create(boolean data) {
-	  return create(data, boolType);
+	  return create(data, BaseType.Bool);
   }
   /**
    * Create an {@link DataType#INT32} Tensor with data from the given buffer.
@@ -241,28 +229,28 @@ public final class Tensor<T> implements AutoCloseable {
    * encoded into {@code data} as per the specification of the TensorFlow <a
    * href="https://www.tensorflow.org/code/tensorflow/c/c_api.h">C API</a>.
    *
-   * @param dataType the tensor datatype.
+   * @param type the tensor base type.
    * @param shape the tensor shape.
    * @param data a buffer containing the tensor data.
    * @throws IllegalArgumentException If the tensor datatype or shape is not compatible with the
    *     buffer
    */
-  public static <T> Tensor<T> create(T[] type, long[] shape, ByteBuffer data) {
-	DataType dataType = dataTypeOf(type);
+  public static <T> Tensor<T> create(BaseType<T> type, long[] shape, ByteBuffer data) {
+	DataType dtype = type.dataType();
     int nremaining = 0;
-    if (dataType != DataType.STRING) {
-      int elemBytes = elemByteSize(dataType);
+    if (dtype != DataType.STRING) {
+      int elemBytes = elemByteSize(dtype);
       if (data.remaining() % elemBytes != 0) {
     	  throw new IllegalArgumentException(
     				  String.format(
     						  "ByteBuffer with %d bytes is not compatible with a %s Tensor (%d bytes/element)",
-    						  data.remaining(), dataType.toString(), elemBytes));
+    						  data.remaining(), dtype.toString(), elemBytes));
       }
       nremaining = data.remaining() / elemBytes;
     } else {
       nremaining = data.remaining();
     }
-    Tensor<T> t = allocateForBuffer(dataType, shape, nremaining);
+    Tensor<T> t = allocateForBuffer(dtype, shape, nremaining);
     t.buffer().put(data);
     return t;
   }
@@ -270,11 +258,11 @@ public final class Tensor<T> implements AutoCloseable {
   /** View this Tensor object as the type Tensor<U>. An exception is
    * thrown if the actual data type of this object does not match the type {@code U}.
    * This method is useful when given a value of type {@code Tensor<?>}.
-   * @param dummy any (non-null) array of the correct type.
+   * @param type any (non-null) array of the correct type.
    * @return this
    */
- @SuppressWarnings("unchecked") public <U> Tensor<U> expect(U[] dummy) {
-	  DataType dt = dataTypeOf(dummy);
+ @SuppressWarnings("unchecked") public <U> Tensor<U> expect(BaseType<U> type) {
+	  DataType dt = type.dataType();
 	  if (!dt.equals(dtype))
 		  throw new IllegalArgumentException("Cannot cast from tensor of " + dtype + " to tensor of " + dt);
 	  return ((Tensor<U>) this); 
@@ -481,13 +469,7 @@ public final class Tensor<T> implements AutoCloseable {
    *     in this tensor
    * @throws IllegalArgumentException If the tensor datatype is not {@link DataType#DOUBLE}
    */
-  public void writeTo(DoubleBuffer dst) {
-    if (dtype != DataType.DOUBLE) {
-      throw incompatibleBuffer(dst, dtype);
-    }
-    ByteBuffer src = buffer();
-    dst.put(src.asDoubleBuffer());
-  }
+   public abstract void writeTo(DoubleBuffer dst);
 
   /**
    * Write the data of a {@link DataType#INT64} tensor into the given buffer.
@@ -516,16 +498,7 @@ public final class Tensor<T> implements AutoCloseable {
    * @throws BufferOverflowException If there is insufficient space in the given buffer for the data
    *     in this tensor
    */
-  public void writeTo(ByteBuffer dst) {
-    ByteBuffer src = buffer();
-    dst.put(src);
-  }
-
-  /** Returns a string describing the type and shape of the Tensor. */
-  @Override
-  public String toString() {
-    return String.format("%s tensor with shape %s", dtype.toString(), Arrays.toString(shape()));
-  }
+  abstract public void writeTo(ByteBuffer dst);
 
   /**
    * Create a Tensor object from a handle to the C TF_Tensor object.
@@ -543,19 +516,8 @@ public final class Tensor<T> implements AutoCloseable {
     return nativeHandle;
   }
 
-  private long nativeHandle;
-  private DataType dtype;
-  private long[] shapeCopy = null;
-
-  /**
-   * Create a tensor containing datatype t
-   * 
-   *  <p>Requires: t must match T
-   */
-  private Tensor(DataType t) {
-    dtype = t;
-  }
-
+  Tensor() {}
+  
   private ByteBuffer buffer() {
     return buffer(nativeHandle).order(ByteOrder.nativeOrder());
   }

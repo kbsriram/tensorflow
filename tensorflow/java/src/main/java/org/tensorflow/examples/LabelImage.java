@@ -23,6 +23,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+
+import org.tensorflow.BaseType;
 import org.tensorflow.DataType;
 import org.tensorflow.Graph;
 import org.tensorflow.Output;
@@ -94,13 +96,13 @@ public class LabelImage {
               b.sub(
                   b.resizeBilinear(
                       b.expandDims(
-                          b.cast(b.decodeJpeg(input, 3), Tensor.floatType),
+                          b.cast(b.decodeJpeg(input, 3), BaseType.Float),
                           b.constant("make_batch", 0)),
                       b.constant("size", new int[] {H, W})),
                   b.constant("mean", mean)),
               b.constant("scale", scale));
       try (Session s = new Session(g)) {
-        return s.runner().fetch(output.op().name()).run().get(0).expect(Tensor.floatType);
+        return s.runner().fetch(output.op().name()).run().get(0).expect(BaseType.Float);
       }
     }
   }
@@ -109,7 +111,7 @@ public class LabelImage {
     try (Graph g = new Graph()) {
       g.importGraphDef(graphDef);
       try (Session s = new Session(g);
-          Tensor<Float> result = s.runner().feed("input", image).fetch("output").run().get(0).expect(Tensor.floatType)) {
+          Tensor<Float> result = s.runner().feed("input", image).fetch("output").run().get(0).expect(BaseType.Float)) {
         final long[] rshape = result.shape();
         if (result.numDimensions() != 2 || rshape[0] != 1) {
           throw new RuntimeException(
@@ -177,7 +179,7 @@ public class LabelImage {
       return binaryOp3("ExpandDims", input, dim);
     }
 
-    <T, U> Output<U> cast(Output<T> value, U[] type) {
+    <T, U> Output<U> cast(Output<T> value, BaseType<U> type) {
       DataType dtype = Tensor.dataTypeOf(type);
       return g.opBuilder("Cast", "Cast").addInput(value).setAttr("DstT", dtype).build().output(0);
     }
@@ -190,7 +192,7 @@ public class LabelImage {
           .output(0);
     }
 
-    <T> Output<T> constant(String name, Object value, T[] type) {
+    <T> Output<T> constant(String name, Object value, BaseType<T> type) {
       try (Tensor<T> t = Tensor.create(value, type)) {
         return g.opBuilder("Const", name)
             .setAttr("dtype", t.dataType())
@@ -200,7 +202,7 @@ public class LabelImage {
       }
     }
     Output<Byte> constant(String name, byte[] value) {
-        try (Tensor<Byte> t = Tensor.create(value, Tensor.uint8Type)) {
+        try (Tensor<Byte> t = Tensor.create(value, BaseType.UInt8)) {
           return g.opBuilder("Const", name)
               .setAttr("dtype", t.dataType())
               .setAttr("value", t)
@@ -209,7 +211,7 @@ public class LabelImage {
         }
       }
     Output<Integer> constant(String name, int value) {
-        try (Tensor<Integer> t = Tensor.create(value, Tensor.intType)) {
+        try (Tensor<Integer> t = Tensor.create(value, BaseType.Int)) {
           return g.opBuilder("Const", name)
               .setAttr("dtype", DataType.INT32)
               .setAttr("value", t)
@@ -218,7 +220,7 @@ public class LabelImage {
         }
       }
     Output<Integer> constant(String name, int[] value) {
-        try (Tensor<Integer> t = Tensor.create(value, Tensor.intType)) {
+        try (Tensor<Integer> t = Tensor.create(value, BaseType.Int)) {
           return g.opBuilder("Const", name)
               .setAttr("dtype", DataType.INT32)
               .setAttr("value", t)
@@ -227,7 +229,7 @@ public class LabelImage {
         }
       }
     Output<Float> constant(String name, float value) {
-        try (Tensor<Float> t = Tensor.create(value, Tensor.floatType)) {
+        try (Tensor<Float> t = Tensor.create(value, BaseType.Float)) {
           return g.opBuilder("Const", name)
               .setAttr("dtype", DataType.FLOAT)
               .setAttr("value", t)

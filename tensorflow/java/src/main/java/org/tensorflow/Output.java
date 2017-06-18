@@ -21,7 +21,7 @@ package org.tensorflow;
  * <p>An Output<T> is a symbolic handle to a Tensor<T>. The value of the tensor is computed by executing
  * the {@link Operation} in a {@link Session}.
  */
-public final class Output<T> {
+public final class Output<T> extends Tensor<T> {
 
   /** Handle to the idx-th output of the Operation {@code op}. */
   public Output(Operation op, int idx) {
