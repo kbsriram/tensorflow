@@ -41,7 +41,7 @@ import java.util.Arrays;
  * }
  * }</pre>
  */
-public class Tensor<T> {
+public class Tensor<T> implements AutoCloseable {
 
   /**
    * Create a Tensor from a Java object.
