@@ -41,7 +41,7 @@ import java.util.Arrays;
  * }
  * }</pre>
  */
-abstract public class Tensor<T> {
+public class Tensor<T> {
 
   /**
    * Create a Tensor from a Java object.
@@ -83,7 +83,7 @@ abstract public class Tensor<T> {
   }
   
   public static <T> Tensor<T> create_unsafe(Object obj) {
-    TensorValue<T> t = new TensorValue<T>(dataTypeOf(obj));
+	Tensor<T> t = new Tensor<T>(dataTypeOf(obj));
     t.shapeCopy = new long[numDimensions(obj)];
     fillShape(obj, 0, t.shapeCopy);
     if (t.dtype != DataType.STRING) {
@@ -296,7 +296,6 @@ abstract public class Tensor<T> {
    *
    * <p>The Tensor object is no longer usable after {@code close} returns.
    */
-  @Override
   public void close() {
     if (nativeHandle != 0) {
       delete(nativeHandle);
@@ -469,7 +468,13 @@ abstract public class Tensor<T> {
    *     in this tensor
    * @throws IllegalArgumentException If the tensor datatype is not {@link DataType#DOUBLE}
    */
-   public abstract void writeTo(DoubleBuffer dst);
+  public void writeTo(DoubleBuffer dst) {
+	  if (dtype != DataType.DOUBLE) {
+		  throw incompatibleBuffer(dst, dtype);
+	  }
+	  ByteBuffer src = buffer();
+	  dst.put(src.asDoubleBuffer());
+  }
 
   /**
    * Write the data of a {@link DataType#INT64} tensor into the given buffer.
@@ -498,7 +503,10 @@ abstract public class Tensor<T> {
    * @throws BufferOverflowException If there is insufficient space in the given buffer for the data
    *     in this tensor
    */
-  abstract public void writeTo(ByteBuffer dst);
+   public void writeTo(ByteBuffer dst) {
+	  ByteBuffer src = buffer();
+	  dst.put(src);
+   }
 
   /**
    * Create a Tensor object from a handle to the C TF_Tensor object.
@@ -516,7 +524,9 @@ abstract public class Tensor<T> {
     return nativeHandle;
   }
 
-  Tensor() {}
+  Tensor(DataType t) {
+	  dtype = t;
+  }
   
   private ByteBuffer buffer() {
     return buffer(nativeHandle).order(ByteOrder.nativeOrder());
@@ -640,6 +650,10 @@ abstract public class Tensor<T> {
       }
     }
   }
+  
+  long nativeHandle;
+  DataType dtype; // XXX could replace with: BaseType<T> type;
+  long[] shapeCopy = null;
 
   private static native long allocate(int dtype, long[] shape, long byteSize);
 
