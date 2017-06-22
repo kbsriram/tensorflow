@@ -149,7 +149,8 @@ public class ScopeTest {
     try (Graph g = new Graph();
         Session sess = new Session(g)) {
       Scope s = new Scope(g);
-      Output<Integer> data = Const.create(s.withName("data"), new int[] {600, 470, 170, 430, 300}).output();
+      Output<Integer> data =
+          Const.create(s.withName("data"), new int[] {600, 470, 170, 430, 300}).output();
 
       // Create a composite op with a customized name
       Variance<Integer> var1 = Variance.create(s.withName("example"), data);
@@ -180,16 +181,19 @@ public class ScopeTest {
   // "handwritten" sample operator classes
   private static final class Const<T> {
     private final Output<T> output;
-    
+
     static Const<Integer> create(Scope s, int v) {
-    	return create(s, v, BaseType.Int);
+      return create(s, v, BaseType.Int);
     }
+
     static Const<Integer> create(Scope s, int[] v) {
-    	return create(s, v, BaseType.Int);
+      return create(s, v, BaseType.Int);
     }
+
     static Const<Integer> create(Scope s, int[][] v) {
-    	return create(s, v, BaseType.Int);
+      return create(s, v, BaseType.Int);
     }
+
     static <T> Const<T> create(Scope s, Object v, BaseType<T> type) {
       try (Tensor<T> value = Tensor.create(v, type)) {
         return new Const<T>(
@@ -214,7 +218,7 @@ public class ScopeTest {
   private static final class Mean<T> {
     private final Output<T> output;
 
-    static <T> Mean<T> create(Scope s, Output<T> input, Output<T> reductionIndices) {
+    static <T, TI> Mean<T> create(Scope s, Output<T> input, Output<TI> reductionIndices) {
       return new Mean<T>(
           s.graph()
               .opBuilder("Mean", s.makeOpName("Mean"))
@@ -232,21 +236,22 @@ public class ScopeTest {
       return output;
     }
   }
-  
+
   @SuppressWarnings("unchecked")
   private static final class Promote {
-	static Output<Float> toFloat(Output<Integer> o) {
-		  return (Output<Float>)(Output<?>) o;
-	  }
-	  static Output<Double> toDouble(Output<Integer> o) {
-		  return (Output<Double>)(Output<?>) o;
-	  }
-	  // allow an arbitrary unchecked promotion -- not safe
-	  static <T> Output<T> from(Output<Integer> o) {
-		  return (Output<T>) (Output<?>) o;
-	  }
+    static Output<Float> toFloat(Output<Integer> o) {
+      return (Output<Float>) (Output<?>) o;
+    }
+
+    static Output<Double> toDouble(Output<Integer> o) {
+      return (Output<Double>) (Output<?>) o;
+    }
+    // allow an arbitrary unchecked promotion -- not safe
+    static <T> Output<T> from(Output<Integer> o) {
+      return (Output<T>) (Output<?>) o;
+    }
   }
-  
+
   private static final class SquaredDifference<T> {
     private final Output<T> output;
 
@@ -274,7 +279,8 @@ public class ScopeTest {
 
     static <T> Variance<T> create(Scope base, Output<T> x) {
       Scope s = base.withSubScope("variance");
-      Output<T> zero = Promote.from(Const.create(s.withName("zero"), new int[] {0}, BaseType.Int).output());
+      Output<Integer> zero =
+          Const.<Integer>create(s.withName("zero"), new int[] {0}, BaseType.Int).output();
       Output<T> sqdiff =
           SquaredDifference.create(
                   s.withName("squared_deviation"), x, Mean.create(s, x, zero).output())
@@ -283,11 +289,11 @@ public class ScopeTest {
       return new Variance<T>(Mean.create(s.withName("variance"), sqdiff, zero).output());
     }
 
-    Variance(Output o) {
+    Variance(Output<T> o) {
       output = o;
     }
 
-    Output output() {
+    Output<T> output() {
       return output;
     }
   }

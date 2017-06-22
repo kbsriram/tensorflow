@@ -61,20 +61,20 @@ public class ShapeTest {
   @Test
   public void nodesInAGraph() {
     try (Graph g = new Graph()) {
-      Output n = TestUtil.placeholder(g, "feed", DataType.FLOAT);
-      assertEquals(-1, n.shape().numDimensions());
+      Output<Float> f = TestUtil.placeholder(g, "feed", BaseType.Float);
+      assertEquals(-1, f.shape().numDimensions());
 
-      n = TestUtil.constant(g, "scalar", 3);
+      Output<Integer> n = TestUtil.constant(g, "scalar", 3);
       assertEquals(0, n.shape().numDimensions());
 
-      n = TestUtil.constant(g, "vector", new float[2]);
-      assertEquals(1, n.shape().numDimensions());
-      assertEquals(2, n.shape().size(0));
+      f = TestUtil.constant(g, "vector", new float[2]);
+      assertEquals(1, f.shape().numDimensions());
+      assertEquals(2, f.shape().size(0));
 
-      n = TestUtil.constant(g, "matrix", new float[4][5]);
-      assertEquals(2, n.shape().numDimensions());
-      assertEquals(4, n.shape().size(0));
-      assertEquals(5, n.shape().size(1));
+      f = TestUtil.constant(g, "matrix", new float[4][5]);
+      assertEquals(2, f.shape().numDimensions());
+      assertEquals(4, f.shape().size(0));
+      assertEquals(5, f.shape().size(1));
     }
   }
 }

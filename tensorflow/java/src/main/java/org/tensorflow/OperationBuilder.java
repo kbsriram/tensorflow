@@ -96,7 +96,7 @@ public final class OperationBuilder {
     return this;
   }
 
-  public OperationBuilder addInputList(Output[] inputs) {
+  public OperationBuilder addInputList(Output<?>[] inputs) {
     Graph.Reference r = graph.ref();
     try {
       long[] opHandles = new long[inputs.length];
@@ -200,6 +200,7 @@ public final class OperationBuilder {
   public OperationBuilder setAttr(String name, DataType value) {
     Graph.Reference r = graph.ref();
     try {
+      System.err.println(">>>>: " + value);
       setAttrType(unsafeNativeHandle, name, value.c());
     } finally {
       r.close();

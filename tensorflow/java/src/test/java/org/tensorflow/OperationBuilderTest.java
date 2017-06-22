@@ -28,7 +28,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class OperationBuilderTest {
 
-// TODO(ashankar): Restore this test once the C API gracefully handles mixing graphs and
+  // TODO(ashankar): Restore this test once the C API gracefully handles mixing graphs and
   // operations instead of segfaulting.
   @Test
   @Ignore
@@ -45,7 +45,7 @@ public class OperationBuilderTest {
       }
     }
   }
-  
+
   @Test
   public void failOnUseAfterBuild() {
     try (Graph g = new Graph();
@@ -102,7 +102,7 @@ public class OperationBuilderTest {
       assertTrue(hasNode(g, "StringAndBool"));
       // int (TF "int" attributes are 64-bit signed, so a Java long).
       g.opBuilder("RandomUniform", "Int")
-          .addInput(TestUtil.constant(g, "RandomUniformShape", new int[]{1}))
+          .addInput(TestUtil.constant(g, "RandomUniformShape", new int[] {1}))
           .setAttr("seed", 10)
           .setAttr("dtype", DataType.FLOAT)
           .build();
@@ -156,11 +156,11 @@ public class OperationBuilderTest {
         Session s = new Session(g);
         Tensor<Boolean> yes = Tensor.create(true);
         Tensor<Boolean> no = Tensor.create(false)) {
-      Output<Boolean> placeholder = (Output<Boolean>) TestUtil.placeholder(g, "boolean", DataType.BOOL);
+      Output<Boolean> placeholder = TestUtil.placeholder(g, "boolean", BaseType.Bool);
       Operation check =
           g.opBuilder("Assert", "assert")
               .addInput(placeholder)
-              .addInputList(new Output[] {placeholder})
+              .addInputList(new Output<?>[] {placeholder})
               .build();
       Operation noop = g.opBuilder("NoOp", "noop").addControlInput(check).build();
 

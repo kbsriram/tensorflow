@@ -63,7 +63,8 @@ public class TensorTest {
       }
 
       // note: the buffer is expected to contain raw TF_STRING (as per C API)
-      try (Tensor<String> t = Tensor.create(BaseType.String, strings_shape, ByteBuffer.wrap(strings_))) {
+      try (Tensor<String> t =
+          Tensor.create(BaseType.String, strings_shape, ByteBuffer.wrap(strings_))) {
         assertArrayEquals(strings, t.bytesValue());
       }
     }
@@ -135,7 +136,8 @@ public class TensorTest {
 
     // validate shape-checking
     {
-      try (Tensor<Double> t = Tensor.create(new long[doubles.length + 1], DoubleBuffer.wrap(doubles))) {
+      try (Tensor<Double> t =
+          Tensor.create(new long[doubles.length + 1], DoubleBuffer.wrap(doubles))) {
         fail("should have failed on incompatible buffer");
       } catch (IllegalArgumentException e) {
         // expected
@@ -300,7 +302,7 @@ public class TensorTest {
       assertEquals(2.718f, t.floatValue(), EPSILON_F);
     }
 
-    try (Tensor<Float> t = Tensor.create(3.1415, BaseType.Float)) {
+    try (Tensor<Double> t = Tensor.create(3.1415, BaseType.Double)) {
       assertEquals(DataType.DOUBLE, t.dataType());
       assertEquals(0, t.numDimensions());
       assertEquals(0, t.shape().length);
@@ -329,7 +331,7 @@ public class TensorTest {
     }
 
     final byte[] bytes = {1, 2, 3, 4};
-    try (Tensor<Byte> t = Tensor.create(bytes)) {
+    try (Tensor<String> t = Tensor.create(bytes)) {
       assertEquals(DataType.STRING, t.dataType());
       assertEquals(0, t.numDimensions());
       assertEquals(0, t.shape().length);
