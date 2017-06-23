@@ -22,7 +22,6 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.tensorflow.BaseType;
 import org.tensorflow.Graph;
 import org.tensorflow.Output;
 import org.tensorflow.Session;
@@ -150,7 +149,7 @@ public class ScopeTest {
         Session sess = new Session(g)) {
       Scope s = new Scope(g);
       Output<Integer> data =
-          Const.create(s.withName("data"), new int[] {600, 470, 170, 430, 300}).output();
+          Const.<Integer>create(s.withName("data"), new int[] {600, 470, 170, 430, 300}).output();
 
       // Create a composite op with a customized name
       Variance<Integer> var1 = Variance.create(s.withName("example"), data);
@@ -171,9 +170,10 @@ public class ScopeTest {
       assertNotNull(g.operation("variance/zero"));
 
       // Verify correct results as well.
-      Tensor<Integer> result = sess.runner().fetch(var1.output()).run().get(0).expect(BaseType.Int);
+      Tensor<Integer> result =
+          sess.runner().fetch(var1.output()).run().get(0).expect(Integer.class);
       assertEquals(21704, result.intValue());
-      result = sess.runner().fetch(var2.output()).run().get(0).expect(BaseType.Int);
+      result = sess.runner().fetch(var2.output()).run().get(0).expect(Integer.class);
       assertEquals(21704, result.intValue());
     }
   }
@@ -182,20 +182,8 @@ public class ScopeTest {
   private static final class Const<T> {
     private final Output<T> output;
 
-    static Const<Integer> create(Scope s, int v) {
-      return create(s, v, BaseType.Int);
-    }
-
-    static Const<Integer> create(Scope s, int[] v) {
-      return create(s, v, BaseType.Int);
-    }
-
-    static Const<Integer> create(Scope s, int[][] v) {
-      return create(s, v, BaseType.Int);
-    }
-
-    static <T> Const<T> create(Scope s, Object v, BaseType<T> type) {
-      try (Tensor<T> value = Tensor.create(v, type)) {
+    static <T> Const<T> create(Scope s, Object v) {
+      try (Tensor<T> value = Tensor.create(v)) {
         return new Const<T>(
             s.graph()
                 .opBuilder("Const", s.makeOpName("Const"))
@@ -279,8 +267,7 @@ public class ScopeTest {
 
     static <T> Variance<T> create(Scope base, Output<T> x) {
       Scope s = base.withSubScope("variance");
-      Output<Integer> zero =
-          Const.<Integer>create(s.withName("zero"), new int[] {0}, BaseType.Int).output();
+      Output<Integer> zero = Const.<Integer>create(s.withName("zero"), new int[] {0}).output();
       Output<T> sqdiff =
           SquaredDifference.create(
                   s.withName("squared_deviation"), x, Mean.create(s, x, zero).output())

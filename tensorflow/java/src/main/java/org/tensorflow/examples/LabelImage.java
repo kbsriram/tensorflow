@@ -23,8 +23,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-
-import org.tensorflow.BaseType;
 import org.tensorflow.DataType;
 import org.tensorflow.Graph;
 import org.tensorflow.Output;
@@ -96,13 +94,12 @@ public class LabelImage {
               b.sub(
                   b.resizeBilinear(
                       b.expandDims(
-                          b.cast(b.decodeJpeg(input, 3), BaseType.Float),
-                          b.constant("make_batch", 0)),
+                          b.cast(b.decodeJpeg(input, 3), Float.class), b.constant("make_batch", 0)),
                       b.constant("size", new int[] {H, W})),
                   b.constant("mean", mean)),
               b.constant("scale", scale));
       try (Session s = new Session(g)) {
-        return s.runner().fetch(output.op().name()).run().get(0).expect(BaseType.Float);
+        return s.runner().fetch(output.op().name()).run().get(0).expect(Float.class);
       }
     }
   }
@@ -111,7 +108,8 @@ public class LabelImage {
     try (Graph g = new Graph()) {
       g.importGraphDef(graphDef);
       try (Session s = new Session(g);
-          Tensor<Float> result = s.runner().feed("input", image).fetch("output").run().get(0).expect(BaseType.Float)) {
+          Tensor<Float> result =
+              s.runner().feed("input", image).fetch("output").run().get(0).expect(Float.class)) {
         final long[] rshape = result.shape();
         if (result.numDimensions() != 2 || rshape[0] != 1) {
           throw new RuntimeException(
@@ -163,7 +161,7 @@ public class LabelImage {
       this.g = g;
     }
 
-    Output<Float> div(Output<Float> x, Output<Float> y) {
+    <T> Output<T> div(Output<T> x, Output<T> y) {
       return binaryOp("Div", x, y);
     }
 
@@ -179,8 +177,8 @@ public class LabelImage {
       return binaryOp3("ExpandDims", input, dim);
     }
 
-    <T, U> Output<U> cast(Output<T> value, BaseType<U> type) {
-      DataType dtype = Tensor.dataTypeOf(type);
+    <T, U> Output<U> cast(Output<T> value, Class<U> javaType) {
+      DataType dtype = DataType.fromClass(javaType);
       return g.opBuilder("Cast", "Cast").addInput(value).setAttr("DstT", dtype).build().output(0);
     }
 
@@ -192,8 +190,8 @@ public class LabelImage {
           .output(0);
     }
 
-    <T> Output<T> constant(String name, Object value, BaseType<T> type) {
-      try (Tensor<T> t = Tensor.create(value, type)) {
+    <T> Output<T> constant(String name, Object value) {
+      try (Tensor<T> t = Tensor.create(value)) {
         return g.opBuilder("Const", name)
             .setAttr("dtype", t.dataType())
             .setAttr("value", t)
@@ -201,49 +199,15 @@ public class LabelImage {
             .output(0);
       }
     }
-    Output<Byte> constant(String name, byte[] value) {
-        try (Tensor<Byte> t = Tensor.create(value, BaseType.UInt8)) {
-          return g.opBuilder("Const", name)
-              .setAttr("dtype", t.dataType())
-              .setAttr("value", t)
-              .build()
-              .output(0);
-        }
-      }
-    Output<Integer> constant(String name, int value) {
-        try (Tensor<Integer> t = Tensor.create(value, BaseType.Int)) {
-          return g.opBuilder("Const", name)
-              .setAttr("dtype", DataType.INT32)
-              .setAttr("value", t)
-              .build()
-              .output(0);
-        }
-      }
-    Output<Integer> constant(String name, int[] value) {
-        try (Tensor<Integer> t = Tensor.create(value, BaseType.Int)) {
-          return g.opBuilder("Const", name)
-              .setAttr("dtype", DataType.INT32)
-              .setAttr("value", t)
-              .build()
-              .output(0);
-        }
-      }
-    Output<Float> constant(String name, float value) {
-        try (Tensor<Float> t = Tensor.create(value, BaseType.Float)) {
-          return g.opBuilder("Const", name)
-              .setAttr("dtype", DataType.FLOAT)
-              .setAttr("value", t)
-              .build()
-              .output(0);
-        }
-      }
 
     private <T> Output<T> binaryOp(String type, Output<T> in1, Output<T> in2) {
       return g.opBuilder(type, type).addInput(in1).addInput(in2).build().output(0);
     }
+
     private <T, U, V> Output<T> binaryOp3(String type, Output<U> in1, Output<V> in2) {
-    	 return g.opBuilder(type, type).addInput(in1).addInput(in2).build().output(0);
+      return g.opBuilder(type, type).addInput(in1).addInput(in2).build().output(0);
     }
+
     private Graph g;
   }
 }

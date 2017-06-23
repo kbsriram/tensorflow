@@ -18,40 +18,46 @@ package org.tensorflow;
 /** Type of elements in a {@link Tensor}. */
 public enum DataType {
   /** 32-bit single precision floating point. */
-  FLOAT(1),
+  FLOAT(1, Float.class),
 
   /** 64-bit double precision floating point. */
-  DOUBLE(2),
+  DOUBLE(2, Double.class),
 
   /** 32-bit signed integer. */
-  INT32(3),
+  INT32(3, Integer.class),
 
   /** 8-bit unsigned integer. */
-  UINT8(4),
+  UINT8(4, Byte.class),
 
   /**
    * A sequence of bytes.
    *
    * <p>TensorFlow uses the STRING type for an arbitrary sequence of bytes.
    */
-  STRING(7),
+  STRING(7, String.class),
 
   /** 64-bit signed integer. */
-  INT64(9),
+  INT64(9, Long.class),
 
   /** Boolean. */
-  BOOL(10);
+  BOOL(10, Boolean.class);
 
   private final int value;
+  private final Class<?> clazz;
 
   // The integer value must match the corresponding TF_* value in the TensorFlow C API.
-  DataType(int value) {
+  DataType(int value, Class<?> clazz) {
     this.value = value;
+    this.clazz = clazz;
   }
 
   /** Corresponding value of the TF_DataType enum in the TensorFlow C API. */
   int c() {
     return value;
+  }
+
+  Class<?> javaType() {
+    return clazz;
   }
 
   static DataType fromC(int c) {
@@ -62,5 +68,15 @@ public enum DataType {
     }
     throw new IllegalArgumentException(
         "DataType " + c + " is not recognized in Java (version " + TensorFlow.version() + ")");
+  }
+
+  public static DataType fromClass(Class<?> clazz) {
+    for (DataType t : DataType.values()) {
+      if (t.javaType().equals(clazz)) {
+        return t;
+      }
+    }
+    throw new IllegalArgumentException(
+        "DataType " + clazz + " is not recognized in Java (version " + TensorFlow.version() + ")");
   }
 }

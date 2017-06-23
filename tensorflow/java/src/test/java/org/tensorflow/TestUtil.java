@@ -19,17 +19,7 @@ import java.lang.reflect.Array;
 
 /** Static utility functions. */
 public class TestUtil {
-  public static Output<Integer> constant(Graph g, String name, int value) {
-    try (Tensor<Integer> t = Tensor.create(value, BaseType.Int)) {
-      return g.opBuilder("Const", name)
-          .setAttr("dtype", DataType.INT32)
-          .setAttr("value", t)
-          .build()
-          .output(0);
-    }
-  }
 
-  /** Deprecated. Does not check that the value's type and T match. */
   public static <T> Output<T> constant(Graph g, String name, Object value) {
     try (Tensor<T> t = Tensor.create_unsafe(value)) {
       return g.opBuilder("Const", name)
@@ -40,23 +30,11 @@ public class TestUtil {
     }
   }
 
-  public static <T> Output<T> constant(Graph g, String name, Object value, BaseType<T> type) {
-    try (Tensor<T> t = Tensor.create(value, type)) {
-      return g.opBuilder("Const", name)
-          .setAttr("dtype", t.dataType())
-          .setAttr("value", t)
-          .build()
-          .output(0);
-    }
-  }
-
-  public static Output<?> placeholder(Graph g, String name, DataType dtype) {
-    return g.opBuilder("Placeholder", name).setAttr("dtype", dtype).build().output(0);
-  }
-
-  public static <T> Output<T> placeholder(Graph g, String name, BaseType<T> type) {
-    System.err.println(">>>> bt: " + type);
-    return g.opBuilder("Placeholder", name).setAttr("dtype", type.dataType()).build().output(0);
+  public static <T> Output<T> placeholder(Graph g, String name, Class<T> clazz) {
+    return g.opBuilder("Placeholder", name)
+        .setAttr("dtype", DataType.fromClass(clazz))
+        .build()
+        .output(0);
   }
 
   public static Output<?> addN(Graph g, Output<?>... inputs) {
@@ -75,7 +53,7 @@ public class TestUtil {
   }
 
   public static void transpose_A_times_X(Graph g, int[][] a) {
-    matmul(g, "Y", constant(g, "A", a), placeholder(g, "X", DataType.INT32), true, false);
+    matmul(g, "Y", constant(g, "A", a), placeholder(g, "X", Integer.class), true, false);
   }
 
   /**

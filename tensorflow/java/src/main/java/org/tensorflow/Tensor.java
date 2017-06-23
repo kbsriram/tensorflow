@@ -75,11 +75,8 @@ public class Tensor<T> implements AutoCloseable {
    *     system, or if obj does not disambiguate between multiple DataTypes. In that case, consider
    *     using {@link #create(DataType, long[], ByteBuffer)} instead.
    */
-  public static <T> Tensor<T> create(Object obj, BaseType<T> baseType) {
+  public static <T> Tensor<T> create(Object obj) {
     DataType dt1 = dataTypeOf(obj);
-    DataType dt2 = baseType.dataType();
-    if (!dt1.equals(dt2))
-      throw new IllegalArgumentException("Data type of object does not match T");
     return create_unsafe(obj);
   }
 
@@ -102,70 +99,6 @@ public class Tensor<T> implements AutoCloseable {
     return t;
   }
 
-  // XXX where do these methods belong?
-  public static Tensor<Float> create(float data) {
-    return create(data, BaseType.Float);
-  }
-
-  public static Tensor<Float> create(float[] data) {
-    return create(data, BaseType.Float);
-  }
-
-  public static Tensor<Float> create(float[][] data) {
-    return create(data, BaseType.Float);
-  }
-
-  public static Tensor<Double> create(double[] data) {
-    return create(data, BaseType.Double);
-  }
-
-  public static Tensor<Integer> create(int data) {
-    return create(data, BaseType.Int);
-  }
-
-  public static Tensor<Integer> create(int[] data) {
-    return create(data, BaseType.Int);
-  }
-
-  public static Tensor<Integer> create(int[][] data) {
-    return create(data, BaseType.Int);
-  }
-
-  public static Tensor<Integer> create(int[][][] data) {
-    return create(data, BaseType.Int);
-  }
-
-  public static Tensor<Long> create(long data) {
-    return create(data, BaseType.Long);
-  }
-
-  public static Tensor<Long> create(long[] data) {
-    return create(data, BaseType.Long);
-  }
-
-  public static Tensor<Long> create(long[][] data) {
-    return create(data, BaseType.Long);
-  }
-
-  public static Tensor<Long> create(long[][][] data) {
-    return create(data, BaseType.Long);
-  }
-
-  public static Tensor<String> create(byte[] data) {
-    return create(data, BaseType.String);
-  }
-
-  public static Tensor<String> create(byte[][] data) {
-    return create(data, BaseType.String);
-  }
-
-  public static Tensor<String> create(byte[][][] data) {
-    return create(data, BaseType.String);
-  }
-
-  public static Tensor<Boolean> create(boolean data) {
-    return create(data, BaseType.Bool);
-  }
   /**
    * Create an {@link DataType#INT32} Tensor with data from the given buffer.
    *
@@ -232,27 +165,8 @@ public class Tensor<T> implements AutoCloseable {
    * @param data a buffer containing the tensor data.
    * @throws IllegalArgumentException If the tensor shape is not compatible with the buffer
    */
-  public static Tensor<Long> create(long[] shape, LongBuffer data) {
-    Tensor<Long> t = allocateForBuffer(DataType.INT64, shape, data.remaining());
-    t.buffer().asLongBuffer().put(data);
-    return t;
-  }
-
-  /**
-   * Create a Tensor with data from the given buffer.
-   *
-   * <p>Creates a Tensor with the provided shape of any type where the tensor's data has been
-   * encoded into {@code data} as per the specification of the TensorFlow <a
-   * href="https://www.tensorflow.org/code/tensorflow/c/c_api.h">C API</a>.
-   *
-   * @param type the tensor base type.
-   * @param shape the tensor shape.
-   * @param data a buffer containing the tensor data.
-   * @throws IllegalArgumentException If the tensor datatype or shape is not compatible with the
-   *     buffer
-   */
-  public static <T> Tensor<T> create(BaseType<T> type, long[] shape, ByteBuffer data) {
-    DataType dtype = type.dataType();
+  public static <T> Tensor<T> create(Class<T> javaType, long[] shape, ByteBuffer data) {
+    DataType dtype = DataType.fromClass(javaType);
     int nremaining = 0;
     if (dtype != DataType.STRING) {
       int elemBytes = elemByteSize(dtype);
@@ -271,6 +185,12 @@ public class Tensor<T> implements AutoCloseable {
     return t;
   }
 
+  public static Tensor<Long> create(long[] shape, LongBuffer data) {
+    Tensor<Long> t = allocateForBuffer(DataType.INT64, shape, data.remaining());
+    t.buffer().asLongBuffer().put(data);
+    return t;
+  }
+
   /**
    * View this Tensor object as the type Tensor<U>. An exception is thrown if the actual data type
    * of this object does not match the type {@code U}. This method is useful when given a value of
@@ -280,11 +200,10 @@ public class Tensor<T> implements AutoCloseable {
    * @return this
    */
   @SuppressWarnings("unchecked")
-  public <U> Tensor<U> expect(BaseType<U> type) {
-    DataType dt = type.dataType();
-    if (!dt.equals(dtype))
+  public <U> Tensor<U> expect(Class<U> javaType) {
+    if (!javaType.equals(dtype.javaType()))
       throw new IllegalArgumentException(
-          "Cannot cast from tensor of " + dtype + " to tensor of " + dt);
+          "Cannot cast from tensor of " + dtype + " to tensor of " + javaType);
     return ((Tensor<U>) this);
   }
 

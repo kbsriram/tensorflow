@@ -35,7 +35,7 @@ public class SessionTest {
     try (Graph g = new Graph();
         Session s = new Session(g)) {
       TestUtil.transpose_A_times_X(g, new int[][] {{2}, {3}});
-      try (Tensor<Integer> x = Tensor.create(new int[][] {{5}, {7}}, BaseType.Int);
+      try (Tensor<Integer> x = Tensor.create(new int[][] {{5}, {7}});
           AutoCloseableList<Tensor<?>> outputs =
               new AutoCloseableList<Tensor<?>>(s.runner().feed("X", x).fetch("Y").run())) {
         assertEquals(1, outputs.size());
@@ -52,7 +52,7 @@ public class SessionTest {
       TestUtil.transpose_A_times_X(g, new int[][] {{2}, {3}});
       Output<Integer> feed = g.operation("X").output(0);
       Output<Integer> fetch = g.operation("Y").output(0);
-      try (Tensor<Integer> x = Tensor.create(new int[][] {{5}, {7}}, BaseType.Int);
+      try (Tensor<Integer> x = Tensor.create(new int[][] {{5}, {7}});
           AutoCloseableList<Tensor<?>> outputs =
               new AutoCloseableList<Tensor<?>>(s.runner().feed(feed, x).fetch(fetch).run())) {
         assertEquals(1, outputs.size());
@@ -83,9 +83,15 @@ public class SessionTest {
         assertArrayEquals(expected, fetched.copyTo(new int[2]));
       }
       // Feed using colon separated names.
-      try (Tensor<Integer> fed = Tensor.create(new int[] {4, 3, 2, 1}, BaseType.Int);
+      try (Tensor<Integer> fed = Tensor.create(new int[] {4, 3, 2, 1});
           Tensor<Integer> fetched =
-              s.runner().feed("Split:0", fed).feed("Split:1", fed).fetch("Add").run().get(0).expect(BaseType.Int)) {
+              s.runner()
+                  .feed("Split:0", fed)
+                  .feed("Split:1", fed)
+                  .fetch("Add")
+                  .run()
+                  .get(0)
+                  .expect(Integer.class)) {
         final int[] expected = {8, 6, 4, 2};
         assertArrayEquals(expected, fetched.copyTo(new int[4]));
       }
@@ -97,7 +103,7 @@ public class SessionTest {
     try (Graph g = new Graph();
         Session s = new Session(g)) {
       TestUtil.transpose_A_times_X(g, new int[][] {{2}, {3}});
-      try (Tensor<Integer> x = Tensor.create(new int[][] {{5}, {7}}, BaseType.Int)) {
+      try (Tensor<Integer> x = Tensor.create(new int[][] {{5}, {7}})) {
         Session.Run result =
             s.runner()
                 .feed("X", x)

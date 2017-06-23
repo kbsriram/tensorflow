@@ -61,7 +61,7 @@ public class ShapeTest {
   @Test
   public void nodesInAGraph() {
     try (Graph g = new Graph()) {
-      Output<Float> f = TestUtil.placeholder(g, "feed", BaseType.Float);
+      Output<Float> f = TestUtil.placeholder(g, "feed", Float.class);
       assertEquals(-1, f.shape().numDimensions());
 
       Output<Integer> n = TestUtil.constant(g, "scalar", 3);
