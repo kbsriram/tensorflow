@@ -32,7 +32,7 @@ clean() {
   # (though if run inside a clean docker container, there won't be any dirty
   # artifacts lying around)
   mvn -q clean
-  rm -rf libtensorflow_jni/src libtensorflow_jni/target libtensorflow/src libtensorflow/target
+  rm -rf libtensorflow_jni/src libtensorflow_jni/target libtensorflow/src libtensorflow/target tensorflow-android/target
 }
 
 update_version_in_pom() {
@@ -50,6 +50,14 @@ download_libtensorflow() {
   jar -xvf /tmp/src.jar
   rm -rf META-INF
   cd "${DIR}"
+}
+
+update_tensorflow_android() {
+  mkdir -p "${DIR}/tensorflow-android/target"
+  python "${DIR}/tensorflow-android/update.py" \
+    --version "${TF_VERSION}" \
+    --template "${DIR}/tensorflow-android/pom-android.xml.template" \
+    --dir "${DIR}/tensorflow-android/target"
 }
 
 download_libtensorflow_jni() {
@@ -126,6 +134,31 @@ generate_java_protos() {
   rm -rf "${DIR}/proto/tmp"
 }
 
+# If successfully built, try to deploy.
+# If successfully deployed, clean.
+# If deployment fails, debug with
+#   ./release.sh ${TF_VERSION} ${SETTINGS_XML} bash
+# To get a shell to poke around the maven artifacts with.
+deploy_artifacts() {
+
+  # This deploys the non-android pieces
+  mvn deploy
+
+  # The android artifact is a single aar file downloaded from the CI
+  # build system, rather than built by maven. This is signed and
+  # pushed together with its associated pom file.
+  if [[ "${IS_SNAPSHOT}" == "true" ]]; then
+    REPO="https://oss.sonatype.org/content/repositories/snapshots"
+  else
+    REPO="https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+  fi
+  mvn gpg:sign-and-deploy-file -Dfile="${DIR}/tensorflow-android/target/tensorflow.aar" -DpomFile="${DIR}/tensorflow-android/target/pom-android.xml" -Durl=${REPO} -DrepositoryId=ossrh
+
+  # Clean up when everything works
+  clean
+}
+
+
 if [ -z "${TF_VERSION}" ]
 then
   echo "Must set the TF_VERSION environment variable"
@@ -144,15 +177,12 @@ clean
 update_version_in_pom
 download_libtensorflow
 download_libtensorflow_jni
+update_tensorflow_android
 generate_java_protos
 # Build the release artifacts
 mvn verify
-# If successfully built, try to deploy.
-# If successfully deployed, clean.
-# If deployment fails, debug with
-#   ./release.sh ${TF_VERSION} ${SETTINGS_XML} bash
-# To get a shell to poke around the maven artifacts with.
-mvn deploy && clean
+# Push artifacts to repository
+deploy_artifacts
 
 set +ex
 if [[ "${IS_SNAPSHOT}" == "false" ]]; then
